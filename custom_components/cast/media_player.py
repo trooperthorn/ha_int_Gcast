@@ -34,7 +34,10 @@ from homeassistant.exceptions import (
     ServiceValidationError,
     TemplateError,
 )
-from homeassistant.helpers.device_registry import DeviceInfo
+from homeassistant.helpers.device_registry import (
+    CONNECTION_NETWORK_MAC,
+    DeviceInfo,
+)
 from homeassistant.helpers.dispatcher import async_dispatcher_connect
 from homeassistant.helpers.entity_platform import AddConfigEntryEntitiesCallback
 from homeassistant.helpers.network import NoURLAvailableError, get_url, is_hass_url
@@ -84,6 +87,7 @@ from .helpers import (
     PlaylistSupported,
     parse_playlist,
 )
+from .mac import async_resolve_mac
 from .urls import rewrite_hass_url, url_overrides
 
 if TYPE_CHECKING:
@@ -369,6 +373,8 @@ class CastMediaPlayerEntity(CastDevice, MediaPlayerEntity):
             model=cast_info.cast_info.model_name,
             name=str(cast_info.friendly_name),
         )
+        if (mac := async_resolve_mac(hass, cast_info.cast_info.host)) is not None:
+            self._attr_device_info["connections"] = {(CONNECTION_NETWORK_MAC, mac)}
 
         if cast_info.cast_info.cast_type in [
             pychromecast.const.CAST_TYPE_AUDIO,

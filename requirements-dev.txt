@@ -15,3 +15,8 @@ PyChromecast==14.0.10
 # Test-only: core tts (which the ported cast tests set up) imports these
 mutagen==1.48.1
 ha-ffmpeg==3.2.2
+
+# Test-only: importing homeassistant.components.dhcp (the public source of the
+# IP-to-MAC map) pulls these in; pinned exactly as core's dhcp manifest pins them
+aiodhcpwatcher==1.2.7
+aiodiscover==3.3.2
