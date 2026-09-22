@@ -50,6 +50,8 @@ async def test_diagnostics_answer_is_tts_working(
     assert device["last_success"] is None
     assert device["subnet_mismatch"] is True
     assert device["model"] == "Chromecast"
+    # dhcp is not set up in this test, so the address is simply not known
+    assert device["mac"] is None
 
     assert diag["ledger"][-1]["outcome"] == "fetch_failed"
     assert diag["ledger"][-1]["url_source"] is None

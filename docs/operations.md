@@ -129,3 +129,25 @@ attestations for user-owned private repositories), auto-merge cannot be
 enabled, and secret scanning is unavailable. Making the repository public
 turns all of these on with no other change; the release verification
 commands then include `gh attestation verify`.
+
+## Hardware addresses and linked devices
+
+Each cast device is registered with a `CONNECTION_NETWORK_MAC` connection
+when its hardware address is known. pychromecast never reports one, so the
+address is read from the `dhcp` integration, which maps IP to MAC for every
+host it has seen. `dhcp` is an `after_dependency`: when it is not loaded, or
+when it has not seen the speaker, the device is registered without a
+connection and nothing else changes.
+
+The connection makes the device registry treat this device and the device
+another integration creates for the same client, typically a UniFi client,
+as linked. They are not merged into one device. Home Assistant Core 2026.8
+restricted a device to a single config entry and stopped merging devices
+across integrations, so each config entry keeps its own device entry; the
+`config/device_registry/list_linked_devices` WebSocket command is what
+reports the association.
+
+A speaker on a network Home Assistant does not reach will not have an
+address. The per-device diagnostics report `mac` as `null` in that case,
+alongside `host` and `subnet`, which is enough to tell "no lease seen" from
+"wrong subnet".

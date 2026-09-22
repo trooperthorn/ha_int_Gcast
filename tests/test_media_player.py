@@ -28,6 +28,7 @@ from homeassistant.helpers.dispatcher import (
     async_dispatcher_send,
 )
 from homeassistant.helpers.integration_platform import LazyIntegrationPlatforms
+from homeassistant.helpers.service_info.dhcp import DhcpServiceInfo
 from homeassistant.setup import async_setup_component
 import pychromecast
 from pychromecast.const import CAST_TYPE_CHROMECAST, CAST_TYPE_GROUP
@@ -827,6 +828,63 @@ async def test_entity_availability(hass: HomeAssistant) -> None:
     await hass.async_block_till_done()
     state = hass.states.get(entity_id)
     assert state.state == "unavailable"
+
+
+async def test_device_registry_mac_connection(
+    hass: HomeAssistant,
+    device_registry: dr.DeviceRegistry,
+    entity_registry: er.EntityRegistry,
+) -> None:
+    """A speaker whose address dhcp knows is registered with a MAC connection.
+
+    That connection is what makes the device registry report this device and
+    the UniFi client device for the same speaker as linked.
+    """
+    hass.config.components.add("dhcp")
+    info = get_fake_chromecast_info()
+
+    with patch(
+        "homeassistant.components.dhcp.async_discovered_service_info",
+        return_value=[
+            DhcpServiceInfo(
+                ip="192.168.178.42",
+                hostname="speaker",
+                macaddress="ccf411abf8eb",
+            )
+        ],
+    ):
+        chromecast, _ = await async_setup_media_player_cast(hass, info)
+        _, conn_status_cb, _ = get_status_callbacks(chromecast)
+        connection_status = MagicMock()
+        connection_status.status = "CONNECTED"
+        conn_status_cb(connection_status)
+        await hass.async_block_till_done()
+
+    entity_entry = entity_registry.async_get("media_player.speaker")
+    device_entry = device_registry.async_get(entity_entry.device_id)
+    assert device_entry.connections == {
+        (dr.CONNECTION_NETWORK_MAC, "cc:f4:11:ab:f8:eb")
+    }
+
+
+async def test_device_registry_without_known_mac(
+    hass: HomeAssistant,
+    device_registry: dr.DeviceRegistry,
+    entity_registry: er.EntityRegistry,
+) -> None:
+    """A speaker dhcp has never seen is still registered, without a connection."""
+    info = get_fake_chromecast_info()
+
+    chromecast, _ = await async_setup_media_player_cast(hass, info)
+    _, conn_status_cb, _ = get_status_callbacks(chromecast)
+    connection_status = MagicMock()
+    connection_status.status = "CONNECTED"
+    conn_status_cb(connection_status)
+    await hass.async_block_till_done()
+
+    entity_entry = entity_registry.async_get("media_player.speaker")
+    device_entry = device_registry.async_get(entity_entry.device_id)
+    assert device_entry.connections == set()
 
 
 @pytest.mark.parametrize(("port", "entry_type"), [(8009, None), (12345, None)])

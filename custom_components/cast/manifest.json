@@ -3,6 +3,7 @@
   "name": "Google Cast",
   "after_dependencies": [
     "cloud",
+    "dhcp",
     "http",
     "media_source",
     "network",

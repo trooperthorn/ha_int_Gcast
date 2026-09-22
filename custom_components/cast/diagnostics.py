@@ -14,6 +14,7 @@ from homeassistant.helpers.network import NoURLAvailableError, get_url
 
 from . import CastConfigEntry
 from .const import DOMAIN
+from .mac import async_resolve_mac
 from .topology import _as_ipv4
 from .urls import url_overrides
 
@@ -59,6 +60,7 @@ async def async_get_config_entry_diagnostics(
                 "is_audio_group": info.is_audio_group,
                 "is_dynamic_group": info.is_dynamic_group,
                 "subnet": _adapter_for(info.cast_info.host, networks),
+                "mac": async_resolve_mac(hass, info.cast_info.host),
             }
         )
 
