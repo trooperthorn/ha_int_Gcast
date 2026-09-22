@@ -84,6 +84,19 @@ to `main` publishes the release; see `docs/operations.md`.
 - 10 new tests including `test_repair_autoresolves` behavior for every
   issue and the stale device fix flow over the repairs HTTP API.
 
+### WP5, documentation and release tooling
+
+- `README.md`, `docs/troubleshooting.md` (from "the speaker said nothing"
+  to a cause using only the fork's entities and diagnostics),
+  `docs/operations.md`, `docs/README.md`, `THREAT-MODEL.md`.
+- Blueprint `blueprints/automation/trooperthorn/cast_delivery_alert.yaml`
+  turning `cast_delivery_result` failures into notifications.
+- Release tooling: CalVer `YYYY.MM.DD.N` with no tag prefix, manifest and
+  tag bumped in lockstep by `scripts/set_version.py`, validated by
+  `scripts/build_release_artifacts.py`; HACS installs `cast.zip` from the
+  GitHub Release with SBOM, checksums, and attestations.
+- `network` added to `after_dependencies` (hassfest).
+
 ### Divergence from upstream
 
 Inherited files edited by the fork, so an upstream reconciliation knows

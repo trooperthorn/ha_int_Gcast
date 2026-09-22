@@ -1,0 +1,53 @@
+blueprint:
+  name: Cast delivery alert
+  description: >-
+    Notify when a Cast announcement or probe does not succeed. Listens to the
+    cast_delivery_result event fired by the Google Cast delivery health fork
+    and sends a notification naming the device, the outcome, and the error.
+    Probes skipped because the device was playing, and superseded requests,
+    are ignored.
+  domain: automation
+  source_url: https://github.com/trooperthorn/ha_int_Gcast/blob/main/blueprints/automation/trooperthorn/cast_delivery_alert.yaml
+  input:
+    notify_service:
+      name: Notification action
+      description: The notify action to call, for example notify.mobile_app_phone.
+      default: notify.notify
+      selector:
+        text:
+    include_probes:
+      name: Include probe failures
+      description: Also notify when a background reachability probe fails, not only real announcements.
+      default: true
+      selector:
+        boolean:
+
+variables:
+  include_probes: !input include_probes
+
+triggers:
+  - trigger: event
+    event_type: cast_delivery_result
+
+conditions:
+  - condition: template
+    value_template: >-
+      {{ trigger.event.data.outcome not in ['ok', 'skipped_busy', 'unknown'] }}
+  - condition: template
+    value_template: >-
+      {{ trigger.event.data.source != 'probe' or include_probes }}
+
+actions:
+  - action: !input notify_service
+    data:
+      title: "Cast delivery {{ trigger.event.data.outcome }}: {{ trigger.event.data.name }}"
+      message: >-
+        {{ trigger.event.data.name }} ({{ trigger.event.data.entity_id }})
+        reported {{ trigger.event.data.outcome }}
+        {%- if trigger.event.data.url_source %} fetching from {{ trigger.event.data.url_source }}{% endif -%}
+        {%- if trigger.event.data.responded is false %} without answering the request{% endif -%}.
+        {{ trigger.event.data.error or '' }}
+        Source: {{ trigger.event.data.source }}.
+
+mode: queued
+max: 10

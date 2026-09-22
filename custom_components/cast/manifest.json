@@ -5,6 +5,7 @@
     "cloud",
     "http",
     "media_source",
+    "network",
     "plex",
     "tts",
     "zeroconf"
