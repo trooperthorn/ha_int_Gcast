@@ -142,7 +142,7 @@
       "fields": {
         "message": {
           "name": "Message",
-          "description": "The text to speak. May be a template; wrap it in {% raw %} ... {% endraw %} in an automation so it is rendered here, where a failure becomes a template_error outcome."
+          "description": "The text to speak. May be a template; in an automation wrap it in a Jinja raw block so it reaches this action unrendered, where a failure becomes a template_error outcome."
         },
         "engine": {
           "name": "Engine",
