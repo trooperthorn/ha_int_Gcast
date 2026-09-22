@@ -1,5 +1,7 @@
 """Consts for Cast integration."""
 
+from collections.abc import Mapping
+from types import MappingProxyType
 from typing import TYPE_CHECKING, NotRequired, TypedDict
 from uuid import UUID
 
@@ -57,6 +59,21 @@ DEFAULT_GROUP_PROBE_ENABLED = True
 DEFAULT_PROBE_VIDEO_DEVICES = False
 DEFAULT_PROBE_INTERVAL = 300
 MIN_PROBE_INTERVAL = 60
+
+# The default for every Delivery health option, in one place because two
+# readers have to agree on it: the options flow, which shows the user what is
+# in effect, and probe_options(), which decides what actually runs. When the
+# flow filtered these to the keys already stored and the coordinator fell back
+# to the defaults, an entry with no options saved drew every box unchecked
+# while probing ran.
+HEALTH_DEFAULTS: Mapping[str, bool | int] = MappingProxyType(
+    {
+        CONF_PROBE_ENABLED: DEFAULT_PROBE_ENABLED,
+        CONF_PROBE_INTERVAL: DEFAULT_PROBE_INTERVAL,
+        CONF_GROUP_PROBE_ENABLED: DEFAULT_GROUP_PROBE_ENABLED,
+        CONF_PROBE_VIDEO_DEVICES: DEFAULT_PROBE_VIDEO_DEVICES,
+    }
+)
 
 DELIVERY_TIMEOUT = 30.0
 REQUEST_WATCHDOG = 45.0

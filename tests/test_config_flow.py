@@ -14,6 +14,7 @@ from pytest_homeassistant_custom_component.common import (
 )
 
 from custom_components.cast import DOMAIN
+from custom_components.cast.coordinator import probe_options
 from custom_components.cast.home_assistant_cast import CAST_USER_NAME
 
 
@@ -312,6 +313,40 @@ async def test_known_hosts(hass: HomeAssistant, castbrowser_mock) -> None:
     castbrowser_mock.return_value.host_browser.update_hosts.assert_called_once_with(
         ["192.168.0.11", "192.168.0.12"]
     )
+
+
+async def test_option_flow_health_shows_what_is_running(
+    hass: HomeAssistant,
+) -> None:
+    """An entry with nothing stored must show the defaults that are in effect.
+
+    Regression: the form filtered its suggested values to the keys already
+    present in options, so an entry that had never saved them drew every
+    checkbox unchecked while probe_options() fell back to the defaults and
+    probing ran. The form said off, the runtime said on.
+    """
+    config_entry = MockConfigEntry(domain=DOMAIN, data={}, options={})
+    config_entry.add_to_hass(hass)
+    assert await hass.config_entries.async_setup(config_entry.entry_id)
+    await hass.async_block_till_done()
+
+    result = await hass.config_entries.options.async_init(config_entry.entry_id)
+    health_schema = result["data_schema"].schema["health"]
+    suggested = _get_schema_suggested_values(
+        health_schema.schema.schema,
+        [
+            "probe_enabled",
+            "probe_interval",
+            "group_probe_enabled",
+            "probe_video_devices",
+        ],
+    )
+    running = probe_options(config_entry)
+
+    assert suggested["probe_enabled"] == running.enabled
+    assert suggested["probe_interval"] == running.interval
+    assert suggested["group_probe_enabled"] == running.groups
+    assert suggested["probe_video_devices"] == running.video
 
 
 async def test_option_flow_health_section(hass: HomeAssistant) -> None:
