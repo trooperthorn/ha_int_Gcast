@@ -1,5 +1,5 @@
 # Linting and formatting
-ruff==0.16.5
+ruff==0.16.8
 
 # Type checking
 mypy==2.3.1
