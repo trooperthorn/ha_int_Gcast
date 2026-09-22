@@ -31,8 +31,9 @@ then.
 ## Step 2: `fetch_failed`, the device cannot reach Home Assistant
 
 The `url_source` attribute says which Home Assistant URL the device was
-given: `internal_url`, `external_url`, or nothing (a URL outside Home
-Assistant, for example a radio stream).
+given: `internal_url`, `external_url`, `override` (a per-device URL set in
+the options, shown in the `url_override` attribute), or nothing (a URL
+outside Home Assistant, for example a radio stream).
 
 1. Look for the repair issue **"<device> cannot fetch announcements from
    Home Assistant"** under Settings, Repairs. It appears after two
@@ -53,6 +54,17 @@ Assistant, for example a radio stream).
    address. Speakers on the LAN should receive `internal_url`; check that
    `internal_url` is set and that the automation did not request the
    external URL.
+5. If only some speakers can reach the `internal_url` address (a
+   multi-VLAN host where the automatic URL picked an interface the other
+   VLAN cannot route to), give those speakers their own base URL: Settings,
+   Devices and services, Google Cast, Configure, tick "Edit per-device URL
+   overrides next" under Delivery health, pick the device, enter
+   `http://<address>:8123`. Every Home Assistant URL sent to that device,
+   from `tts.speak`, `cast.announce`, `play_media`, and the probe, is
+   re-based onto it; `url_source` then reads `override`. An empty URL
+   removes the override. Overrides are per device, so a speaker group needs
+   its own entry, and a leader that moves to another subnet still fetches
+   from the group's override.
 
 The issue clears itself as soon as a delivery to that device succeeds.
 

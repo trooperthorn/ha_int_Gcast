@@ -40,6 +40,7 @@ class HomeAssistantControllerData(TypedDict):
     refresh_token: str
     app_id: NotRequired[str]
 
+
 # Fork additions; see DESIGN.md.
 EVENT_DELIVERY_RESULT = "cast_delivery_result"
 SIGNAL_HEALTH_UPDATED: SignalType[UUID] = SignalType("cast_health_updated")
@@ -49,6 +50,8 @@ CONF_PROBE_ENABLED = "probe_enabled"
 CONF_PROBE_INTERVAL = "probe_interval"
 CONF_GROUP_PROBE_ENABLED = "group_probe_enabled"
 CONF_PROBE_VIDEO_DEVICES = "probe_video_devices"
+# Per-device base URL overrides: {"<uuid>": "http://host:port"}; see urls.py.
+CONF_URL_OVERRIDES = "url_overrides"
 DEFAULT_PROBE_ENABLED = True
 DEFAULT_GROUP_PROBE_ENABLED = True
 DEFAULT_PROBE_VIDEO_DEVICES = False

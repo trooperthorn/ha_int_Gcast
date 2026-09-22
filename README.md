@@ -34,6 +34,11 @@ verdict where automations and people can see it.
   reach Home Assistant is reported before an announcement is missed. Never
   interrupts playback, never touches a Chromecast with a display unless
   asked, backs off from devices that stop answering.
+- **Per-device URL override**: Home Assistant has one internal URL, but a
+  speaker on another VLAN or behind a proxy can be given its own base URL in
+  the options. Announcements from `tts.speak`, `cast.announce`, plain
+  `play_media`, and the probe are all rewritten for that device; radio
+  streams and other third-party URLs are never touched.
 - **Event `cast_delivery_result`** for every verdict, and a blueprint that
   turns non-`ok` verdicts into notifications.
 - **Action `cast.announce`**: renders the message template itself so a

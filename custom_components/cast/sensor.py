@@ -28,6 +28,7 @@ from .const import (
 from .health import DeliveryLedger, DeliveryOutcome, DeviceHealth
 from .helpers import ChromecastInfo
 from .topology import GroupTopology, TopologyTracker
+from .urls import url_overrides
 
 PARALLEL_UPDATES = 0
 
@@ -144,6 +145,7 @@ class CastOutcomeSensor(CastHealthSensor):
             "consecutive_timeouts": health.consecutive_timeouts,
             "circuit_open": health.circuit_open_until is not None,
             "subnet_mismatch": health.subnet_mismatch,
+            "url_override": url_overrides(self._ledger.entry).get(health.uuid),
             "host": health.host,
             "port": health.port,
         }

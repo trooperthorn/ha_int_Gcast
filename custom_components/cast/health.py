@@ -41,6 +41,7 @@ from .const import (
     LEDGER_SIZE,
     SIGNAL_HEALTH_UPDATED,
 )
+from .urls import url_overrides
 
 if TYPE_CHECKING:
     from . import CastConfigEntry
@@ -354,7 +355,10 @@ class DeliveryLedger:
             )
             return
 
-        if player_state not in (MEDIA_PLAYER_STATE_BUFFERING, MEDIA_PLAYER_STATE_PLAYING):
+        if player_state not in (
+            MEDIA_PLAYER_STATE_BUFFERING,
+            MEDIA_PLAYER_STATE_PLAYING,
+        ):
             _LOGGER.debug(
                 "%s ignored status (state %s is not BUFFERING or PLAYING) for content_id=%s",
                 prefix,
@@ -393,10 +397,14 @@ class DeliveryLedger:
         )
         if health.pending is None:
             _LOGGER.debug(
-                "%s load failed with no pending request: %s", self._log_prefix(health), message
+                "%s load failed with no pending request: %s",
+                self._log_prefix(health),
+                message,
             )
             return
-        self._resolve(health, DeliveryOutcome.FETCH_FAILED, error=message, responded=True)
+        self._resolve(
+            health, DeliveryOutcome.FETCH_FAILED, error=message, responded=True
+        )
 
     @callback
     def async_request_failed(
@@ -433,7 +441,9 @@ class DeliveryLedger:
                 else "RequestFailed while connected: the device answered the request "
                 "with a failure (no launch error reason was reported)"
             )
-        elif isinstance(cause, (NotConnected, ChromecastConnectionError, RequestFailed)):
+        elif isinstance(
+            cause, (NotConnected, ChromecastConnectionError, RequestFailed)
+        ):
             outcome = DeliveryOutcome.UNREACHABLE
             responded = False
             text = f"{type(cause).__name__}: {cause}"
@@ -525,9 +535,13 @@ class DeliveryLedger:
             observed=observed or {},
         )
 
-    def _url_source(self, content_id: str | None) -> str | None:
+    def _url_source(self, uuid: UUID, content_id: str | None) -> str | None:
         if not content_id:
             return None
+        if (base := url_overrides(self.entry).get(uuid)) and content_id.startswith(
+            f"{base}/"
+        ):
+            return "override"
         external_url = internal_url = None
         with suppress(NoURLAvailableError):
             external_url = get_url(self.hass, allow_internal=False)
@@ -561,7 +575,7 @@ class DeliveryLedger:
             outcome=outcome,
             content_id=content_id,
             error=error,
-            url_source=self._url_source(content_id),
+            url_source=self._url_source(health.uuid, content_id),
             responded=responded,
             requested_at=requested_at,
             resolved_at=now,
@@ -572,7 +586,10 @@ class DeliveryLedger:
         )
         self.records.append(record)
         health.last_record = record
-        if outcome is not DeliveryOutcome.UNKNOWN and outcome is not DeliveryOutcome.SKIPPED_BUSY:
+        if (
+            outcome is not DeliveryOutcome.UNKNOWN
+            and outcome is not DeliveryOutcome.SKIPPED_BUSY
+        ):
             health.last_outcome = outcome
         if outcome is DeliveryOutcome.OK:
             health.last_success = now

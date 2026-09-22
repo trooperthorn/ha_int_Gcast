@@ -84,6 +84,7 @@ from .helpers import (
     PlaylistSupported,
     parse_playlist,
 )
+from .urls import rewrite_hass_url, url_overrides
 
 if TYPE_CHECKING:
     from . import CastConfigEntry, CastProtocol
@@ -432,7 +433,10 @@ class CastMediaPlayerEntity(CastDevice, MediaPlayerEntity):
             raise ServiceValidationError(
                 translation_domain=DOMAIN,
                 translation_key="template_error",
-                translation_placeholders={"entity_id": self.entity_id, "error": str(err)},
+                translation_placeholders={
+                    "entity_id": self.entity_id,
+                    "error": str(err),
+                },
             ) from err
         rendered = str(rendered).strip()
         if not rendered:
@@ -743,6 +747,26 @@ class CastMediaPlayerEntity(CastDevice, MediaPlayerEntity):
             )
             raise
 
+    def _apply_url_override(self, media_id: str) -> str:
+        """Rewrite a Home Assistant URL to this device's override, if any."""
+        uuid = self._cast_info.uuid
+        if (
+            uuid is None
+            or (base := url_overrides(self._config_entry).get(uuid)) is None
+        ):
+            return media_id
+        rewritten = rewrite_hass_url(self.hass, media_id, base)
+        _LOGGER.debug(
+            "[%s %s uuid=%s] url override base=%s applied=%s url=%s",
+            self.entity_id,
+            self._cast_info.friendly_name,
+            uuid,
+            base,
+            rewritten != media_id,
+            rewritten,
+        )
+        return rewritten
+
     def _last_launch_failure(self) -> str | None:
         """Describe the receiver's last LAUNCH_ERROR, if any."""
         if (chromecast := self._chromecast) is None:
@@ -995,6 +1019,7 @@ class CastMediaPlayerEntity(CastDevice, MediaPlayerEntity):
 
         # If media ID is a relative URL, we serve it from HA.
         media_id = async_process_play_media_url(self.hass, media_id)
+        media_id = self._apply_url_override(media_id)
 
         # Configure play command for when playing a HLS stream
         if is_hass_url(self.hass, media_id):

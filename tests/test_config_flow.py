@@ -224,7 +224,11 @@ async def test_zeroconf_setup_onboarding(hass: HomeAssistant) -> None:
                 "known_hosts": ["192.168.0.10", "192.168.0.11"],
                 "uuid": ["bla", "blu"],
             },
-            {"known_hosts": [], "more_options": {"ignore_cec": [], "uuid": []}, "health": {}},
+            {
+                "known_hosts": [],
+                "more_options": {"ignore_cec": [], "uuid": []},
+                "health": {},
+            },
             {"ignore_cec": [], "known_hosts": [], "user_id": ANY, "uuid": []},
         ),
     ],
@@ -324,6 +328,7 @@ async def test_option_flow_health_section(hass: HomeAssistant) -> None:
         "probe_interval",
         "group_probe_enabled",
         "probe_video_devices",
+        "edit_url_overrides",
     }
 
     result = await hass.config_entries.options.async_configure(

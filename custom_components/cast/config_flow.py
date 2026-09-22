@@ -4,15 +4,20 @@ from typing import TYPE_CHECKING, Any, override
 
 from homeassistant.components import onboarding
 from homeassistant.config_entries import ConfigFlow, ConfigFlowResult, OptionsFlow
-from homeassistant.const import CONF_UUID
+from homeassistant.const import CONF_DEVICE, CONF_URL, CONF_UUID
 from homeassistant.core import callback
 from homeassistant.data_entry_flow import SectionConfig, section
 from homeassistant.helpers.selector import (
     NumberSelector,
     NumberSelectorConfig,
     NumberSelectorMode,
+    SelectOptionDict,
     SelectSelector,
     SelectSelectorConfig,
+    SelectSelectorMode,
+    TextSelector,
+    TextSelectorConfig,
+    TextSelectorType,
 )
 from homeassistant.helpers.service_info.zeroconf import ZeroconfServiceInfo
 import voluptuous as vol
@@ -24,6 +29,7 @@ from .const import (
     CONF_PROBE_ENABLED,
     CONF_PROBE_INTERVAL,
     CONF_PROBE_VIDEO_DEVICES,
+    CONF_URL_OVERRIDES,
     DEFAULT_GROUP_PROBE_ENABLED,
     DEFAULT_PROBE_ENABLED,
     DEFAULT_PROBE_INTERVAL,
@@ -31,12 +37,15 @@ from .const import (
     DOMAIN,
     MIN_PROBE_INTERVAL,
 )
+from .urls import normalize_override
 
 if TYPE_CHECKING:
     from . import CastConfigEntry
 
 CONF_MORE_OPTIONS = "more_options"
 CONF_HEALTH = "health"
+CONF_EDIT_URL_OVERRIDES = "edit_url_overrides"
+CONF_ADD_ANOTHER = "add_another"
 HEALTH_SCHEMA = vol.Schema(
     {
         vol.Optional(CONF_PROBE_ENABLED, default=DEFAULT_PROBE_ENABLED): bool,
@@ -53,8 +62,13 @@ HEALTH_SCHEMA = vol.Schema(
             vol.Coerce(int),
             vol.Range(min=MIN_PROBE_INTERVAL, max=3600),
         ),
-        vol.Optional(CONF_GROUP_PROBE_ENABLED, default=DEFAULT_GROUP_PROBE_ENABLED): bool,
-        vol.Optional(CONF_PROBE_VIDEO_DEVICES, default=DEFAULT_PROBE_VIDEO_DEVICES): bool,
+        vol.Optional(
+            CONF_GROUP_PROBE_ENABLED, default=DEFAULT_GROUP_PROBE_ENABLED
+        ): bool,
+        vol.Optional(
+            CONF_PROBE_VIDEO_DEVICES, default=DEFAULT_PROBE_VIDEO_DEVICES
+        ): bool,
+        vol.Optional(CONF_EDIT_URL_OVERRIDES, default=False): bool,
     }
 )
 KNOWN_HOSTS_SCHEMA = vol.Schema(
@@ -157,6 +171,9 @@ class FlowHandler(ConfigFlow, domain=DOMAIN):
 class CastOptionsFlowHandler(OptionsFlow):
     """Handle Google Cast options."""
 
+    _data: dict[str, Any]
+    _options: dict[str, Any]
+
     async def async_step_init(
         self, user_input: dict[str, Any] | None = None
     ) -> ConfigFlowResult:
@@ -167,16 +184,17 @@ class CastOptionsFlowHandler(OptionsFlow):
             )
             known_hosts = _trim_items(user_input.get(CONF_KNOWN_HOSTS, []))
             wanted_uuid = _trim_items(user_input[CONF_MORE_OPTIONS].get(CONF_UUID, []))
-            updated_config = dict(self.config_entry.data)
-            updated_config[CONF_IGNORE_CEC] = ignore_cec
-            updated_config[CONF_KNOWN_HOSTS] = known_hosts
-            updated_config[CONF_UUID] = wanted_uuid
+            self._data = dict(self.config_entry.data)
+            self._data[CONF_IGNORE_CEC] = ignore_cec
+            self._data[CONF_KNOWN_HOSTS] = known_hosts
+            self._data[CONF_UUID] = wanted_uuid
 
-            options = {**self.config_entry.options, **user_input.get(CONF_HEALTH, {})}
-            self.hass.config_entries.async_update_entry(
-                self.config_entry, data=updated_config, options=options
-            )
-            return self.async_create_entry(title="", data=options)
+            health = dict(user_input.get(CONF_HEALTH, {}))
+            edit_overrides = bool(health.pop(CONF_EDIT_URL_OVERRIDES, False))
+            self._options = {**self.config_entry.options, **health}
+            if edit_overrides:
+                return await self.async_step_url_overrides()
+            return self._async_finish()
 
         suggested: dict[str, Any] = {
             CONF_MORE_OPTIONS: {},
@@ -201,8 +219,89 @@ class CastOptionsFlowHandler(OptionsFlow):
         return self.async_show_form(
             step_id="init",
             data_schema=self.add_suggested_values_to_schema(OPTIONS_SCHEMA, suggested),
-            last_step=True,
         )
+
+    @callback
+    def _async_finish(self) -> ConfigFlowResult:
+        """Write data and options in one update so the listener runs once."""
+        self.hass.config_entries.async_update_entry(
+            self.config_entry, data=self._data, options=self._options
+        )
+        return self.async_create_entry(title="", data=self._options)
+
+    async def async_step_url_overrides(
+        self, user_input: dict[str, Any] | None = None
+    ) -> ConfigFlowResult:
+        """Set or clear the base URL one device fetches media from."""
+        overrides: dict[str, str] = dict(self._options.get(CONF_URL_OVERRIDES) or {})
+        errors: dict[str, str] = {}
+        if user_input is not None:
+            device = str(user_input[CONF_DEVICE]).strip()
+            raw = str(user_input.get(CONF_URL) or "").strip()
+            if not raw:
+                overrides.pop(device, None)
+            elif (base := normalize_override(raw)) is None:
+                errors[CONF_URL] = "invalid_url"
+            else:
+                overrides[device] = base
+            if not errors:
+                self._options[CONF_URL_OVERRIDES] = overrides
+                if not user_input.get(CONF_ADD_ANOTHER):
+                    return self._async_finish()
+
+        schema = vol.Schema(
+            {
+                vol.Required(CONF_DEVICE): SelectSelector(
+                    SelectSelectorConfig(
+                        options=self._device_options(overrides),
+                        mode=SelectSelectorMode.DROPDOWN,
+                        custom_value=True,
+                    )
+                ),
+                vol.Optional(CONF_URL): TextSelector(
+                    TextSelectorConfig(type=TextSelectorType.URL)
+                ),
+                vol.Optional(CONF_ADD_ANOTHER, default=False): bool,
+            }
+        )
+        current = (
+            ", ".join(
+                f"{self._device_label(uuid)}: {base}"
+                for uuid, base in overrides.items()
+            )
+            or "none"
+        )
+        return self.async_show_form(
+            step_id="url_overrides",
+            data_schema=schema,
+            errors=errors,
+            description_placeholders={"overrides": current},
+        )
+
+    def _device_label(self, uuid: str) -> str:
+        runtime = getattr(self.config_entry, "runtime_data", None)
+        if runtime is not None and runtime.ledger is not None:
+            for health in runtime.ledger.devices.values():
+                if str(health.uuid) == uuid and health.name:
+                    return f"{health.name} ({health.host or 'no address'})"
+        return uuid
+
+    def _device_options(self, overrides: dict[str, str]) -> list[SelectOptionDict]:
+        """Every device the running entry knows, plus any with an override."""
+        uuids: dict[str, str] = {}
+        runtime = getattr(self.config_entry, "runtime_data", None)
+        if runtime is not None and runtime.ledger is not None:
+            for health in runtime.ledger.devices.values():
+                uuids[str(health.uuid)] = self._device_label(str(health.uuid))
+        for uuid in overrides:
+            uuids.setdefault(uuid, uuid)
+        return [
+            SelectOptionDict(
+                value=uuid,
+                label=f"{label} [{overrides[uuid]}]" if uuid in overrides else label,
+            )
+            for uuid, label in sorted(uuids.items(), key=lambda item: item[1].lower())
+        ]
 
 
 def _trim_items(items: list[str]) -> list[str]:

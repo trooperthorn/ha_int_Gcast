@@ -15,6 +15,7 @@ from homeassistant.helpers.network import NoURLAvailableError, get_url
 from . import CastConfigEntry
 from .const import DOMAIN
 from .topology import _as_ipv4
+from .urls import url_overrides
 
 TO_REDACT = {"external_url", "external_host", "user_id", "refresh_token"}
 
@@ -88,6 +89,9 @@ async def async_get_config_entry_diagnostics(
             "external_url": external_url,
             "external_host": external_host,
             "external_url_pinned": hass.config.external_url is not None,
+            "url_overrides": {
+                str(uuid): base for uuid, base in url_overrides(entry).items()
+            },
         },
         "network": topology.as_dict() if topology else None,
         "devices": devices,
@@ -105,7 +109,9 @@ async def async_get_config_entry_diagnostics(
                 if coordinator
                 else None
             ),
-            "last_update_success": coordinator.last_update_success if coordinator else None,
+            "last_update_success": coordinator.last_update_success
+            if coordinator
+            else None,
             "decisions": (
                 {
                     str(uuid): {
