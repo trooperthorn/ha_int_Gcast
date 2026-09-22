@@ -20,6 +20,7 @@ from .const import DOMAIN
 from .coordinator import CastProbeCoordinator
 from .discovery import config_entry_updated, stop_internal_discovery
 from .health import DeliveryLedger
+from .topology import TopologyTracker
 
 PLATFORMS = [Platform.MEDIA_PLAYER, Platform.SENSOR]
 
@@ -39,6 +40,7 @@ class CastRuntimeData:
     multizone_manager: MultizoneManager | None = None
     ledger: DeliveryLedger | None = None
     coordinator: CastProbeCoordinator | None = None
+    topology: TopologyTracker | None = None
     added_health_devices: set[UUID] = field(default_factory=set)
     unsub_discovery_stop: CALLBACK_TYPE | None = None
 
@@ -69,6 +71,7 @@ async def async_setup_entry(hass: HomeAssistant, entry: CastConfigEntry) -> bool
         cast_platforms=LazyIntegrationPlatforms(hass, DOMAIN, _process_cast_platform)
     )
     ledger = entry.runtime_data.get_ledger(hass, entry)
+    entry.runtime_data.topology = TopologyTracker(hass, entry)
     entry.runtime_data.coordinator = CastProbeCoordinator(hass, entry, ledger)
     entry.async_on_unload(entry.add_update_listener(config_entry_updated))
     await home_assistant_cast.async_setup_ha_cast(hass, entry)

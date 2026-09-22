@@ -34,6 +34,9 @@
       },
       "last_tts_success": {
         "name": "Last TTS success"
+      },
+      "leader": {
+        "name": "Leader"
       }
     }
   },

@@ -17,6 +17,10 @@ permissions:
 jobs:
   hacs:
     name: HACS validation
+    # The action reads hacs.json and the manifest through the GitHub API,
+    # which returns nothing for a private repository; HACS itself needs a
+    # public repository anyway. See docs/operations.md.
+    if: ${{ !github.event.repository.private }}
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1

@@ -183,6 +183,8 @@ class CastProbeCoordinator(DataUpdateCoordinator[dict[UUID, ProbeResult]]):
     async def _async_update_data(self) -> dict[UUID, ProbeResult]:
         """Decide, per device, whether to launch a probe; return immediately."""
         results = dict(self.data or {})
+        if (topology := self.config_entry.runtime_data.topology) is not None:
+            await topology.async_refresh()
         if not self.options.enabled:
             _LOGGER.debug("probe cycle skipped: probing disabled in options")
             return results

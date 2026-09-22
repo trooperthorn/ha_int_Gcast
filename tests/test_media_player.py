@@ -223,8 +223,14 @@ async def async_setup_cast_internal_discovery(
     return discover_chromecast, remove_chromecast, add_entities
 
 
-async def async_setup_media_player_cast(hass: HomeAssistant, info: ChromecastInfo):
-    """Set up a cast config entry."""
+async def async_setup_media_player_cast(
+    hass: HomeAssistant, info: ChromecastInfo, wanted_uuids: list[str] | None = None
+):
+    """Set up a cast config entry.
+
+    By default only ``info`` is wanted, as in core's tests; pass an empty
+    list to accept every discovered device.
+    """
     browser = MagicMock(devices={}, zc={})
     chromecast = get_fake_chromecast(info)
     zconf = get_fake_zconf(host=info.cast_info.host, port=info.cast_info.port)
@@ -243,7 +249,11 @@ async def async_setup_media_player_cast(hass: HomeAssistant, info: ChromecastInf
             return_value=zconf,
         ),
     ):
-        data = {"ignore_cec": [], "known_hosts": [], "uuid": [str(info.uuid)]}
+        data = {
+            "ignore_cec": [],
+            "known_hosts": [],
+            "uuid": [str(info.uuid)] if wanted_uuids is None else wanted_uuids,
+        }
         entry = MockConfigEntry(data=data, domain=DOMAIN)
         entry.add_to_hass(hass)
         assert await hass.config_entries.async_setup(entry.entry_id)
@@ -280,7 +290,7 @@ async def async_setup_media_player_cast(hass: HomeAssistant, info: ChromecastInf
                 info.cast_info.cast_type,
                 info.cast_info.manufacturer,
             )
-            discovery_callback(info.uuid, FAKE_MDNS_SERVICE[1])
+            discovery_callback(info.uuid, FAKE_MDNS_SERVICE.name)
 
         return chromecast, discover_chromecast
 

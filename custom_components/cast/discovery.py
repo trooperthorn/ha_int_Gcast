@@ -44,6 +44,8 @@ def discover_chromecast(
     info = info.fill_out_missing_chromecast_info(hass, config_entry)
     _LOGGER.debug("Discovered new or updated chromecast %s", info)
 
+    if (topology := config_entry.runtime_data.topology) is not None:
+        hass.loop.call_soon_threadsafe(topology.async_record_discovery, info)
     if (ledger := config_entry.runtime_data.ledger) is not None:
         hass.loop.call_soon_threadsafe(
             partial(

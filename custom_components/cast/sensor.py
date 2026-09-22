@@ -19,9 +19,15 @@ from homeassistant.helpers.entity_platform import AddConfigEntryEntitiesCallback
 from homeassistant.util import dt as dt_util
 
 from . import CastConfigEntry
-from .const import DOMAIN, SIGNAL_CAST_DISCOVERED, SIGNAL_HEALTH_UPDATED
+from .const import (
+    DOMAIN,
+    SIGNAL_CAST_DISCOVERED,
+    SIGNAL_HEALTH_UPDATED,
+    SIGNAL_TOPOLOGY_UPDATED,
+)
 from .health import DeliveryLedger, DeliveryOutcome, DeviceHealth
 from .helpers import ChromecastInfo
+from .topology import GroupTopology, TopologyTracker
 
 PARALLEL_UPDATES = 0
 
@@ -50,12 +56,13 @@ async def async_setup_entry(
             port=info.cast_info.port,
             seen=True,
         )
-        async_add_entities(
-            [
-                CastOutcomeSensor(ledger, info),
-                CastLastSuccessSensor(ledger, info),
-            ]
-        )
+        entities: list[SensorEntity] = [
+            CastOutcomeSensor(ledger, info),
+            CastLastSuccessSensor(ledger, info),
+        ]
+        if info.is_audio_group and (topology := config_entry.runtime_data.topology):
+            entities.append(CastGroupLeaderSensor(topology, info))
+        async_add_entities(entities)
 
     config_entry.async_on_unload(
         async_dispatcher_connect(hass, SIGNAL_CAST_DISCOVERED, async_cast_discovered)
@@ -167,3 +174,59 @@ class CastLastSuccessSensor(CastHealthSensor, RestoreSensor):
     def native_value(self) -> datetime | None:
         """Return the last success timestamp."""
         return self.health.last_success
+
+
+class CastGroupLeaderSensor(SensorEntity):
+    """Which device currently leads a speaker group, and where it sits."""
+
+    _attr_has_entity_name = True
+    _attr_should_poll = False
+    _attr_entity_category = EntityCategory.DIAGNOSTIC
+    _attr_translation_key = "leader"
+
+    def __init__(self, topology: TopologyTracker, info: ChromecastInfo) -> None:
+        """Initialize the sensor."""
+        self._topology = topology
+        self._uuid: UUID = info.uuid
+        self._attr_unique_id = f"{info.uuid}_leader"
+        self._attr_device_info = DeviceInfo(
+            identifiers={(DOMAIN, str(info.uuid).replace("-", ""))},
+            manufacturer=str(info.cast_info.manufacturer),
+            model=info.cast_info.model_name,
+            name=str(info.friendly_name),
+        )
+
+    @property
+    def topology_group(self) -> GroupTopology | None:
+        """Return the tracked topology for this group."""
+        return self._topology.groups.get(self._uuid)
+
+    async def async_added_to_hass(self) -> None:
+        """Subscribe to topology updates for this group."""
+        await super().async_added_to_hass()
+
+        @callback
+        def _updated(uuid: UUID) -> None:
+            if uuid == self._uuid:
+                self.async_write_ha_state()
+
+        self.async_on_remove(
+            async_dispatcher_connect(self.hass, SIGNAL_TOPOLOGY_UPDATED, _updated)
+        )
+
+    @property
+    def native_value(self) -> str | None:
+        """Return the leader IP."""
+        group = self.topology_group
+        return group.leader_ip if group else None
+
+    @property
+    def extra_state_attributes(self) -> dict[str, Any]:
+        """Return the membership and subnet placement."""
+        if (group := self.topology_group) is None:
+            return {}
+        data = group.as_dict()
+        data.pop("uuid")
+        data.pop("name")
+        data.pop("leader_ip")
+        return data

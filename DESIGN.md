@@ -190,7 +190,42 @@ Guards, all driven by pychromecast #1247:
 Group probing is a separate option (`group_probe_enabled`) because of
 pychromecast #1197 (groups that buffer forever on play).
 
-## 10. Decisions
+## 10. Topology and subnet awareness (WP3)
+
+A speaker group's `_googlecast._tcp` record is advertised from the leader's
+IP on a dynamic high port instead of 8009, so the group's own
+`ChromecastInfo.cast_info.host` and `port` are the leader address. Members
+come from pychromecast's `MultizoneManager` (`get_multizone_memberships` per
+device, inverted). The device setup endpoint is not consulted: on firmware
+`1.56.467166` it returns no `multizone` key (work order, verified twice on
+2026-09-22).
+
+`sensor.<group>_leader` (diagnostic) on every configured group device:
+
+| Field | Meaning |
+| --- | --- |
+| state | `leader_ip` |
+| `leader_uuid` | The non-group device whose discovery host equals the leader IP, or none if the leader is not a discovered device |
+| `advertised_port` | The dynamic port from the group record |
+| `member_uuids`, `member_ips` | From the multizone manager; empty until the members have connected |
+| `subnets` | The adapter network containing each address, or an assumed /24 when no adapter matches |
+| `members_span_subnets` | True when leader and members resolve to more than one subnet; None when nothing could be placed |
+| `is_dynamic_group` | Always false on the sensor; dynamic groups have no entity and appear in diagnostics with the flag set |
+
+A leader move is logged at info (`leader moved from a:port to b:port`) and
+the sensor updates on the next topology refresh, which runs on every probe
+cycle and can be forced by a config entry reload.
+
+Subnet placement of every device (`subnet_mismatch` on the outcome sensor):
+the `internal_url` host is resolved to an IPv4 literal, matched against the
+enabled adapters' IPv4 networks (falling back to an assumed /24), and each
+device IP is tested against those "home" networks. A hostname `internal_url`
+leaves placement unknown (`null`) rather than guessed, which is one more
+reason to pin `internal_url` to an address (work order open question 5). A
+mismatch with a working probe is not a failure: the outcome stays `ok` and
+only the attribute is set, so the sensor is never trained to be ignored.
+
+## 11. Decisions
 
 | Date | Decision | Alternative rejected |
 | --- | --- | --- |

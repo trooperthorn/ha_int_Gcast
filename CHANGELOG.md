@@ -51,6 +51,20 @@ to `main` publishes the release; see `docs/operations.md`.
 - 14 new tests, including `test_hung_device_does_not_block_others` and
   `test_circuit_breaker_opens`.
 
+### WP3, topology and subnet awareness
+
+- New `topology.py`: group leader IP, uuid, advertised port, and members
+  from the multizone manager; adapter-based subnet placement; leader moves
+  logged.
+- `sensor.<group>_leader` on configured groups with `leader_uuid`,
+  `member_uuids`, `member_ips`, `subnets`, `members_span_subnets`,
+  `advertised_port`, `is_dynamic_group`.
+- `subnet_mismatch` on every outcome sensor; a mismatch never changes the
+  outcome.
+- Group probing stays independently switchable (`group_probe_enabled`).
+- 6 new tests including `test_leader_migration_detected` (inside
+  `test_group_leader_sensor_and_subnets`).
+
 ### Divergence from upstream
 
 Inherited files edited by the fork, so an upstream reconciliation knows

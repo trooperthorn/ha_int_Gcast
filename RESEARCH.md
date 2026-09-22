@@ -79,6 +79,17 @@ the developer documentation clone, and the GitHub API.
 | `MockConfigEntry(options=...)` plus `hass.config_entries.async_update_entry(entry, options=...)` triggers update listeners; an options flow's `async_create_entry(data=...)` replaces `entry.options` with `data`, so the flow must return the merged options or the values are lost | observed in `test_option_flow_health_section`; `config_entries.py` `async_update_entry` | 2026-09-22 |
 | A probe against a device blocked at the firewall cannot be exercised in the harness; the closest reproduction is the `ERROR` idle status the device sends in that case | work order section 4.1 and `test_probe_mdns_visible_but_unreachable` | 2026-09-22 |
 
+## WP3
+
+| Fact | Source | Date |
+| --- | --- | --- |
+| `MultizoneManager` keeps `_casts[member_uuid]["group_memberships"]` and exposes `get_multizone_memberships(member_uuid) -> list[str]` (raises `KeyError` for a device it has not seen) and `get_multizone_mediacontroller(group_uuid)`; it has no group-to-members accessor, so the fork inverts the memberships | `pychromecast/controllers/multizone.py` lines 176 to 230 | 2026-09-22 |
+| Core registers each non-group entity with the manager in `CastStatusListener.__init__` and adds each group with `add_multizone`; `invalidate()` reverses both | `helpers.py` lines 173 to 240 | 2026-09-22 |
+| Core's `CastInfo` for a group carries the leader host and the dynamic port; `ChromecastInfo.is_dynamic_group` is filled from `dial.get_multizone_status` during discovery | `helpers.py` lines 60 to 130, `pychromecast/dial.py` lines 296 to 335 | 2026-09-22 |
+| `network.async_get_adapters(hass)` returns `Adapter` dicts with `enabled`, `ipv4: [{address, network_prefix}]`; the harness `mock_network` fixture provides one adapter `10.10.10.10/24` | `components/network/__init__.py` line 42, `models.py` lines 15 to 31, harness `plugins.py` line 1342 | 2026-09-22 |
+| `hass.config.internal_url` is `None` when the URL is on Automatic | `core_config.py` line 557 | 2026-09-22 |
+| Core's test helper `async_setup_media_player_cast` restricts the entry to the one wanted uuid and its inner `discover_chromecast` subscripted a dataclass (`FAKE_MDNS_SERVICE[1]`), which raises `TypeError`; the vendored copy takes `wanted_uuids` and uses `.name` | `tests/components/cast/test_media_player.py` lines 215 to 283 at the fork point | 2026-09-22 |
+
 ## Corrections to the work order
 
 - Section 4.4: release date is 2026-03-07, not 2025-03-07.
