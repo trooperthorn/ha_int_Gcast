@@ -2,6 +2,31 @@
   "services": {
     "show_lovelace_view": {
       "service": "mdi:view-dashboard"
+    },
+    "announce": {
+      "service": "mdi:bullhorn"
+    }
+  },
+  "entity": {
+    "sensor": {
+      "tts_outcome": {
+        "default": "mdi:help-circle",
+        "state": {
+          "ok": "mdi:check-circle",
+          "fetch_failed": "mdi:cloud-off",
+          "unreachable": "mdi:lan-disconnect",
+          "timeout": "mdi:timer-sand",
+          "template_error": "mdi:code-braces",
+          "skipped_busy": "mdi:music",
+          "unknown": "mdi:help-circle"
+        }
+      },
+      "last_tts_success": {
+        "default": "mdi:clock-check"
+      },
+      "leader": {
+        "default": "mdi:crown"
+      }
     }
   }
 }

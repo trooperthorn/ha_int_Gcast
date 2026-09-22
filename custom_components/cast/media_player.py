@@ -10,7 +10,7 @@ import logging
 from typing import TYPE_CHECKING, Any, Concatenate, cast, override
 from uuid import UUID
 
-from homeassistant.components import media_source, zeroconf
+from homeassistant.components import media_source, tts, zeroconf
 from homeassistant.components.media_player import (
     ATTR_MEDIA_EXTRA,
     BrowseError,
@@ -29,11 +29,16 @@ from homeassistant.const import (
     EVENT_HOMEASSISTANT_STOP,
 )
 from homeassistant.core import CALLBACK_TYPE, Event, HomeAssistant, callback
-from homeassistant.exceptions import HomeAssistantError
+from homeassistant.exceptions import (
+    HomeAssistantError,
+    ServiceValidationError,
+    TemplateError,
+)
 from homeassistant.helpers.device_registry import DeviceInfo
 from homeassistant.helpers.dispatcher import async_dispatcher_connect
 from homeassistant.helpers.entity_platform import AddConfigEntryEntitiesCallback
 from homeassistant.helpers.network import NoURLAvailableError, get_url, is_hass_url
+from homeassistant.helpers.template import Template
 from homeassistant.util import dt as dt_util
 from homeassistant.util.logging import async_create_catching_coro
 import pychromecast.config
@@ -70,7 +75,7 @@ from .const import (
 )
 from .coordinator import ProbeSnapshot
 from .discovery import setup_internal_discovery
-from .health import DeliveryLedger
+from .health import DeliveryLedger, DeliveryOutcome
 from .helpers import (
     CastStatusListener,
     ChromecastInfo,
@@ -355,6 +360,7 @@ class CastMediaPlayerEntity(CastDevice, MediaPlayerEntity):
 
         self._cast_view_remove_handler: CALLBACK_TYPE | None = None
         self._probe_unregister: CALLBACK_TYPE | None = None
+        self._request_source = "play_media"
         self._attr_unique_id = str(cast_info.uuid)
         self._attr_device_info = DeviceInfo(
             identifiers={(DOMAIN, str(cast_info.uuid).replace("-", ""))},
@@ -400,6 +406,89 @@ class CastMediaPlayerEntity(CastDevice, MediaPlayerEntity):
         if self._probe_unregister:
             self._probe_unregister()
             self._probe_unregister = None
+
+    # ========== Monitored announce ==========
+    async def async_announce(
+        self,
+        message: str,
+        engine: str | None = None,
+        language: str | None = None,
+        cache: bool | None = None,
+        options: dict[str, Any] | None = None,
+    ) -> None:
+        """Render the message template, request TTS, and track the delivery.
+
+        The template is rendered here so a failure becomes a template_error
+        outcome and a repair issue instead of an automation trace nobody reads.
+        """
+        uuid = self._cast_info.uuid
+        repairs = self._config_entry.runtime_data.repairs
+        try:
+            rendered = Template(message, self.hass).async_render(
+                {"entity_id": self.entity_id}, parse_result=False
+            )
+        except TemplateError as err:
+            self._async_template_failed(uuid, message, str(err), repairs)
+            raise ServiceValidationError(
+                translation_domain=DOMAIN,
+                translation_key="template_error",
+                translation_placeholders={"entity_id": self.entity_id, "error": str(err)},
+            ) from err
+        rendered = str(rendered).strip()
+        if not rendered:
+            error = "template rendered to an empty message"
+            self._async_template_failed(uuid, message, error, repairs)
+            raise ServiceValidationError(
+                translation_domain=DOMAIN,
+                translation_key="template_error",
+                translation_placeholders={"entity_id": self.entity_id, "error": error},
+            )
+        if repairs is not None:
+            repairs.async_template_error(self.entity_id, message, "", resolved=True)
+        _LOGGER.debug(
+            "[%s %s] announce rendered=%r engine=%s language=%s cache=%s",
+            self.entity_id,
+            self._cast_info.friendly_name,
+            rendered,
+            engine,
+            language,
+            cache,
+        )
+        try:
+            media_id = tts.generate_media_source_id(
+                self.hass,
+                message=rendered,
+                engine=engine,
+                language=language,
+                options=options,
+                cache=cache,
+            )
+        except HomeAssistantError as err:
+            self._ledger.async_record(
+                uuid,
+                DeliveryOutcome.TEMPLATE_ERROR,
+                source="announce",
+                error=f"TTS engine unavailable: {err}",
+            )
+            raise
+        self._request_source = "announce"
+        try:
+            await self.async_play_media(MediaType.MUSIC, media_id)
+        finally:
+            self._request_source = "play_media"
+
+    def _async_template_failed(
+        self, uuid: UUID, template: str, error: str, repairs: Any
+    ) -> None:
+        self._ledger.async_record(
+            uuid,
+            DeliveryOutcome.TEMPLATE_ERROR,
+            source="announce",
+            content_id=None,
+            error=f"template failed to render: {error}",
+        )
+        if repairs is not None:
+            repairs.async_template_error(self.entity_id, template, error)
 
     # ========== Probe target ==========
     def probe_snapshot(self) -> ProbeSnapshot | None:
@@ -619,7 +708,7 @@ class CastMediaPlayerEntity(CastDevice, MediaPlayerEntity):
         return media_controller
 
     async def _async_quick_play_tracked(
-        self, app_name: str, app_data: dict[str, Any], source: str = "play_media"
+        self, app_name: str, app_data: dict[str, Any], source: str | None = None
     ) -> None:
         """Run quick_play behind a watchdog and record the outcome in the ledger."""
         uuid = self._cast_info.uuid
@@ -627,7 +716,7 @@ class CastMediaPlayerEntity(CastDevice, MediaPlayerEntity):
         self._ledger.async_begin_request(
             uuid,
             str(app_data.get("media_id")),
-            source,
+            source or self._request_source,
             media_status.media_session_id if media_status else None,
         )
         try:

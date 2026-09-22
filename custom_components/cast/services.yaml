@@ -15,3 +15,29 @@ show_lovelace_view:
       example: downstairs
       selector:
         text:
+
+announce:
+  target:
+    entity:
+      integration: cast
+      domain: media_player
+  fields:
+    message:
+      required: true
+      example: "The garage door has been open for {% raw %}{{ states('sensor.garage_open_minutes') | int(0) }}{% endraw %} minutes"
+      selector:
+        text:
+    engine:
+      example: tts.google_translate_en_com
+      selector:
+        text:
+    language:
+      example: en
+      selector:
+        text:
+    cache:
+      selector:
+        boolean:
+    options:
+      selector:
+        object:

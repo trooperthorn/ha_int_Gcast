@@ -9,8 +9,9 @@ from homeassistant.config_entries import ConfigEntry
 from homeassistant.const import Platform
 from homeassistant.core import CALLBACK_TYPE, HomeAssistant, callback
 from homeassistant.exceptions import HomeAssistantError
-from homeassistant.helpers import device_registry as dr
+from homeassistant.helpers import config_validation as cv, device_registry as dr
 from homeassistant.helpers.integration_platform import LazyIntegrationPlatforms
+from homeassistant.helpers.typing import ConfigType
 from pychromecast import Chromecast
 from pychromecast.controllers.multizone import MultizoneManager
 from pychromecast.discovery import CastBrowser
@@ -20,9 +21,12 @@ from .const import DOMAIN
 from .coordinator import CastProbeCoordinator
 from .discovery import config_entry_updated, stop_internal_discovery
 from .health import DeliveryLedger
+from .issues import RepairManager
+from .services import async_setup_services
 from .topology import TopologyTracker
 
 PLATFORMS = [Platform.MEDIA_PLAYER, Platform.SENSOR]
+CONFIG_SCHEMA = cv.config_entry_only_config_schema(DOMAIN)
 
 type CastConfigEntry = ConfigEntry[CastRuntimeData]
 
@@ -41,6 +45,7 @@ class CastRuntimeData:
     ledger: DeliveryLedger | None = None
     coordinator: CastProbeCoordinator | None = None
     topology: TopologyTracker | None = None
+    repairs: RepairManager | None = None
     added_health_devices: set[UUID] = field(default_factory=set)
     unsub_discovery_stop: CALLBACK_TYPE | None = None
 
@@ -65,6 +70,12 @@ def _process_cast_platform(
     return platform
 
 
+async def async_setup(hass: HomeAssistant, config: ConfigType) -> bool:
+    """Register the integration's actions."""
+    async_setup_services(hass)
+    return True
+
+
 async def async_setup_entry(hass: HomeAssistant, entry: CastConfigEntry) -> bool:
     """Set up Cast from a config entry."""
     entry.runtime_data = CastRuntimeData(
@@ -72,6 +83,8 @@ async def async_setup_entry(hass: HomeAssistant, entry: CastConfigEntry) -> bool
     )
     ledger = entry.runtime_data.get_ledger(hass, entry)
     entry.runtime_data.topology = TopologyTracker(hass, entry)
+    entry.runtime_data.repairs = RepairManager(hass, entry)
+    await entry.runtime_data.repairs.async_load()
     entry.runtime_data.coordinator = CastProbeCoordinator(hass, entry, ledger)
     entry.async_on_unload(entry.add_update_listener(config_entry_updated))
     await home_assistant_cast.async_setup_ha_cast(hass, entry)
@@ -87,6 +100,9 @@ async def async_unload_entry(hass: HomeAssistant, entry: CastConfigEntry) -> boo
         if entry.runtime_data.coordinator is not None:
             entry.runtime_data.coordinator.async_shutdown_probes()
             await entry.runtime_data.coordinator.async_shutdown()
+        if entry.runtime_data.repairs is not None:
+            entry.runtime_data.repairs.async_shutdown()
+            await entry.runtime_data.repairs.async_flush()
         if entry.runtime_data.ledger is not None:
             entry.runtime_data.ledger.async_shutdown()
     return unload_ok

@@ -90,6 +90,22 @@ the developer documentation clone, and the GitHub API.
 | `hass.config.internal_url` is `None` when the URL is on Automatic | `core_config.py` line 557 | 2026-09-22 |
 | Core's test helper `async_setup_media_player_cast` restricts the entry to the one wanted uuid and its inner `discover_chromecast` subscripted a dataclass (`FAKE_MDNS_SERVICE[1]`), which raises `TypeError`; the vendored copy takes `wanted_uuids` and uses `.name` | `tests/components/cast/test_media_player.py` lines 215 to 283 at the fork point | 2026-09-22 |
 
+## WP4
+
+| Fact | Source | Date |
+| --- | --- | --- |
+| `issue_registry.async_create_issue(hass, domain, issue_id, *, is_fixable, severity, translation_key, translation_placeholders, data, ...)` replaces an existing issue; `async_delete_issue` tolerates a missing one | `helpers/issue_registry.py` lines 339 to 422 | 2026-09-22 |
+| A fixable issue needs `repairs.py` with `async_create_fix_flow(hass, issue_id, data) -> RepairsFlow`; the `homeassistant` component's `OrphanedConfigEntryFlow` is the confirm-then-act pattern | `components/homeassistant/repairs.py` lines 54 to 100 | 2026-09-22 |
+| Core's repairs tests drive fix flows over HTTP through `RepairsFlowIndexView.url` and `RepairsFlowResourceView.url` | `tests/components/repairs/__init__.py` | 2026-09-22 |
+| `Store(hass, version, key)` with `async_load`, `async_save`, `async_delay_save(data_func, delay)`; the harness `hass_storage` fixture captures writes | `helpers/storage.py` lines 228 to 480, harness `plugins.py` | 2026-09-22 |
+| `dr.async_entries_for_config_entry(registry, entry_id)`, `DeviceRegistry.async_remove_device(device_id)`; `device.identifiers` is a set of `(domain, id)` and core cast stores the uuid without dashes | `helpers/device_registry.py` lines 4083 and 4666, `media_player.py` line 300 | 2026-09-22 |
+| `service.async_register_platform_entity_service(hass, service_domain, service_name, *, entity_domain, func, schema)` registers an action dispatched to entities of another domain from `async_setup`; `CONFIG_SCHEMA = cv.config_entry_only_config_schema(DOMAIN)` is the accompanying schema | `helpers/service.py` line 1264, `components/monoprice/__init__.py` lines 23 to 40 | 2026-09-22 |
+| `tts.generate_media_source_id(hass, message, engine, language, options, cache)` raises `HomeAssistantError("Invalid TTS provider selected")` when no engine resolves; the resulting id resolves through `media_source.async_resolve_media` to a relative `/api/tts_proxy/` URL | `components/tts/media_source.py` lines 32 to 60 and 134 to 156 | 2026-09-22 |
+| The automation engine renders templates in action data before the call; `{% raw %}` is the Jinja escape that delivers template text unrendered | `helpers/script.py` (`async_prepare_call_from_config`), Jinja2 documentation | 2026-09-22 |
+| `Template(text, hass).async_render(variables, parse_result=False)` raises `TemplateError` on a bare `int` filter with `unknown` input, the `tts_ev_charging` failure mode | `helpers/template/__init__.py` line 401, observed in `test_announce_template_error` | 2026-09-22 |
+| The demo TTS platform cannot load in the harness (its `conversation` dependency needs `hassil`), so the announce tests patch the media source id and its resolution at the entity's call sites | test run output | 2026-09-22 |
+| `async_redact_data(data, keys)` replaces matching keys anywhere in the structure with `**REDACTED**` | `components/diagnostics/util.py` line 24 | 2026-09-22 |
+
 ## Corrections to the work order
 
 - Section 4.4: release date is 2026-03-07, not 2025-03-07.

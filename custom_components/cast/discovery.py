@@ -46,6 +46,8 @@ def discover_chromecast(
 
     if (topology := config_entry.runtime_data.topology) is not None:
         hass.loop.call_soon_threadsafe(topology.async_record_discovery, info)
+    if (repairs := config_entry.runtime_data.repairs) is not None:
+        hass.loop.call_soon_threadsafe(repairs.async_device_seen, info.uuid)
     if (ledger := config_entry.runtime_data.ledger) is not None:
         hass.loop.call_soon_threadsafe(
             partial(

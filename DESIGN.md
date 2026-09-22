@@ -225,7 +225,56 @@ reason to pin `internal_url` to an address (work order open question 5). A
 mismatch with a working probe is not a failure: the outcome stays `ok` and
 only the attribute is set, so the sensor is never trained to be ignored.
 
-## 11. Decisions
+## 11. Diagnostics, repairs, and registry hygiene (WP4)
+
+### Repair issues
+
+| Issue id | Severity | Raised when | Clears when |
+| --- | --- | --- | --- |
+| `tts_fetch_failed.<uuid>` | error | Two consecutive `fetch_failed` outcomes for a device (any source) | The next `ok` for that device |
+| `internal_url_automatic_multihomed` | warning | Two or more enabled adapters carry IPv4 and `internal_url` is on Automatic | Either condition clears on the next topology refresh |
+| `cast_group_spans_subnets.<uuid>` | warning | A group's leader and members resolve to more than one subnet | The members share a subnet |
+| `stale_cast_device.<device_id>` | warning, fixable | A registry device of this entry has had no discovery response for 7 days (from its last sighting, or from when the fork first saw the registry entry) | The device is discovered again, or the repair removes it |
+| `tts_template_error.<sha1[:12]>` | error | A `cast.announce` message template raised `TemplateError` or rendered empty | The same template renders successfully |
+
+Every issue names the device or group and states the next action in its
+description; none needs manual dismissal. Issue transitions are logged
+(`repair issue raised id=... key=value ...`, `repair issue cleared id=...`)
+so an agent can correlate them with the ledger lines.
+
+### Stale device tracking
+
+Discovery timestamps per device uuid are persisted in `.storage/cast.health`
+(`last_seen`, `tracked_since`), restored into the ledger on setup, and
+flushed on unload. The stale check runs on every probe cycle, even with
+probing disabled. The fix flow deletes the registry device after a
+confirmation form that names it.
+
+### The monitored announce action
+
+`cast.announce` (target: this integration's media players; fields:
+`message`, `engine`, `language`, `cache`, `options`) renders the message
+template itself, so a template failure becomes a `template_error` outcome,
+an event, and a repair issue, instead of an automation trace. Because the
+automation engine renders templates in action data before the call, an
+automation must wrap the template in `{% raw %} ... {% endraw %}` for it to
+reach the action unrendered; a plain string is announced as is and still
+tracked with `source=announce`. An unavailable TTS engine is also recorded as
+`template_error` with the engine error as the reason, since no announcement
+was requested.
+
+### Diagnostics
+
+The download carries: the resolved internal and external URLs with whether
+each is pinned and which adapter network the internal host sits on
+(external host redacted); every discovered device with name, model, host,
+subnet, last outcome, last success, last seen, consecutive failures, and
+circuit state; every group with leader and membership; the last 50 ledger
+records; registry devices with no matching discovered device; probe options
+and the last decision per device; active issue ids and stale candidates.
+`user_id` and the external URL are redacted.
+
+## 12. Decisions
 
 | Date | Decision | Alternative rejected |
 | --- | --- | --- |

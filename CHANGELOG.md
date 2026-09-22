@@ -65,6 +65,25 @@ to `main` publishes the release; see `docs/operations.md`.
 - 6 new tests including `test_leader_migration_detected` (inside
   `test_group_leader_sensor_and_subnets`).
 
+### WP4, diagnostics, repairs, and registry hygiene
+
+- New `issues.py` and `repairs.py`: five self-resolving repair issues
+  (`tts_fetch_failed`, `internal_url_automatic_multihomed`,
+  `cast_group_spans_subnets`, `stale_cast_device` with a removal fix flow,
+  `tts_template_error`), each naming the device and the next action, with
+  discovery timestamps persisted in `.storage/cast.health`.
+- New `diagnostics.py`: URLs with adapter and pinning, every device's
+  outcome and placement, groups, the last 50 ledger records, registry
+  devices without discovery, probe decisions, active issues; external URL
+  and user id redacted.
+- New `cast.announce` action (`services.py`, `CastMediaPlayerEntity.async_announce`):
+  renders the message template itself so a failure is a `template_error`
+  outcome and issue; tracks the delivery as `source=announce`.
+- `icons.json` entity icons per outcome; `quality_scale.yaml` with every
+  rule marked done or exempt with a reason.
+- 10 new tests including `test_repair_autoresolves` behavior for every
+  issue and the stale device fix flow over the repairs HTTP API.
+
 ### Divergence from upstream
 
 Inherited files edited by the fork, so an upstream reconciliation knows

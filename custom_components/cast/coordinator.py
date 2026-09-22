@@ -185,6 +185,9 @@ class CastProbeCoordinator(DataUpdateCoordinator[dict[UUID, ProbeResult]]):
         results = dict(self.data or {})
         if (topology := self.config_entry.runtime_data.topology) is not None:
             await topology.async_refresh()
+            if (repairs := self.config_entry.runtime_data.repairs) is not None:
+                repairs.async_check_topology(topology)
+                repairs.async_check_stale(set(topology.infos))
         if not self.options.enabled:
             _LOGGER.debug("probe cycle skipped: probing disabled in options")
             return results
