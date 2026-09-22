@@ -1,0 +1,25 @@
+[tool.ruff]
+target-version = "py314"
+line-length = 88
+
+[tool.ruff.lint]
+select = ["E", "W", "F", "I", "UP", "B", "SIM", "C4", "ASYNC", "RUF", "LOG", "G", "PIE", "RET"]
+ignore = ["E501"]
+
+[tool.ruff.lint.isort]
+known-first-party = ["custom_components.cast"]
+combine-as-imports = true
+force-sort-within-sections = true
+
+[tool.ruff.lint.per-file-ignores]
+"tests/*" = ["RET504", "RUF012", "B007", "SIM117"]
+# Upstream file kept verbatim so upstream merges stay clean.
+"custom_components/cast/home_assistant_cast.py" = ["RUF015"]
+
+[tool.coverage.run]
+source = ["custom_components/cast"]
+branch = true
+
+[tool.coverage.report]
+show_missing = true
+fail_under = 95

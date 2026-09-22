@@ -1,0 +1,9 @@
+{
+  "tag_prefix": "",
+  "timezone": "America/Chicago",
+  "archive": {"source": "custom_components/cast", "name": "cast.zip"},
+  "release_paths": ["custom_components/cast"],
+  "version_fields": [
+    {"path": "custom_components/cast/manifest.json", "kind": "json", "key": "version"}
+  ]
+}

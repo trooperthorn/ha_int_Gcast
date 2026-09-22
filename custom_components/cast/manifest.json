@@ -1,0 +1,32 @@
+{
+  "domain": "cast",
+  "name": "Google Cast",
+  "after_dependencies": [
+    "cloud",
+    "http",
+    "media_source",
+    "plex",
+    "tts",
+    "zeroconf"
+  ],
+  "codeowners": [
+    "@trooperthorn"
+  ],
+  "config_flow": true,
+  "documentation": "https://github.com/trooperthorn/ha_int_Gcast",
+  "integration_type": "hub",
+  "iot_class": "local_polling",
+  "issue_tracker": "https://github.com/trooperthorn/ha_int_Gcast/issues",
+  "loggers": [
+    "casttube",
+    "pychromecast"
+  ],
+  "requirements": [
+    "PyChromecast==14.0.10"
+  ],
+  "single_config_entry": true,
+  "version": "2026.09.22.1",
+  "zeroconf": [
+    "_googlecast._tcp.local."
+  ]
+}

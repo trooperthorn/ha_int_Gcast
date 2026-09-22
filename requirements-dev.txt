@@ -1,0 +1,17 @@
+# Linting and formatting
+ruff==0.16.5
+
+# Type checking
+mypy==2.3.1
+homeassistant-stubs==2026.9.2
+
+# Home Assistant core and the test harness (the harness pins core 2026.9.2)
+pytest-homeassistant-custom-component==0.13.365
+pytest-cov==7.1.0
+
+# Integration dependency, pinned exactly as core's manifest pins it
+PyChromecast==14.0.10
+
+# Test-only: core tts (which the ported cast tests set up) imports these
+mutagen==1.48.1
+ha-ffmpeg==3.2.2

@@ -1,0 +1,4 @@
+# Runtime and delivery surfaces require owner review.
+/custom_components/cast/ @trooperthorn
+/.github/workflows/ @trooperthorn
+/SECURITY.md @trooperthorn
