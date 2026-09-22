@@ -60,6 +60,7 @@ async def _setup(hass: HomeAssistant):
     connection_status.status = "CONNECTED"
     conn_status_cb(connection_status)
     await hass.async_block_till_done()
+    chromecast.socket_client.receiver_controller.launch_failure = None
     return chromecast, media_status_cb
 
 
@@ -232,7 +233,9 @@ async def test_load_media_failed_resolves_pending(hass: HomeAssistant) -> None:
     [
         (RequestTimeout("quick play", 30.0), DeliveryOutcome.TIMEOUT, False),
         (NotConnected(), DeliveryOutcome.UNREACHABLE, False),
-        (RequestFailed("quick play"), DeliveryOutcome.UNREACHABLE, False),
+        # RequestFailed on a connected device means the device answered with
+        # a failure; the disconnected case is covered by the probe tests.
+        (RequestFailed("quick play"), DeliveryOutcome.FETCH_FAILED, True),
     ],
 )
 async def test_request_exception_classification(
@@ -351,3 +354,28 @@ async def test_health_sensor_device_record_matches_media_player(hass: HomeAssist
     assert sensor.device_info["manufacturer"] == "Nabu Casa"
     assert sensor.device_info["model"] == "Chromecast"
     assert sensor.unique_id == f"{info.uuid}_tts_outcome"
+
+
+async def test_request_failed_while_connected_is_a_rejection(
+    hass: HomeAssistant, quick_play_mock
+) -> None:
+    """RequestFailed on a connected device is the device rejecting the launch."""
+    from pychromecast.controllers.receiver import LaunchFailure
+
+    chromecast, _ = await _setup(hass)
+    chromecast.socket_client.receiver_controller.launch_failure = LaunchFailure(
+        "NOT_FOUND", "CC1AD845", 7
+    )
+    quick_play_mock.side_effect = RequestFailed("quick play")
+    with pytest.raises(HomeAssistantError):
+        await _play(hass)
+    outcome = hass.states.get(OUTCOME)
+    assert outcome.state == DeliveryOutcome.FETCH_FAILED
+    assert outcome.attributes["responded"] is True
+    assert "reason=NOT_FOUND app_id=CC1AD845" in outcome.attributes["error"]
+
+    # Without a launch failure recorded the text still says it was answered.
+    chromecast.socket_client.receiver_controller.launch_failure = None
+    with pytest.raises(HomeAssistantError):
+        await _play(hass)
+    assert "answered the request with a failure" in hass.states.get(OUTCOME).attributes["error"]

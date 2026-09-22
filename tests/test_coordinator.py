@@ -262,7 +262,9 @@ async def test_probe_decisions(hass: HomeAssistant) -> None:
     await hass.async_block_till_done()
     assert coordinator.data[group_uuid].decision == "skipped: group probing disabled"
     assert coordinator.data[video_uuid].decision.startswith("skipped: video devices")
-    assert coordinator.data[gone_uuid].decision == "skipped: not connected"
+    assert coordinator.data[gone_uuid].decision == "unreachable: not connected"
+    assert coordinator.ledger.device(gone_uuid).last_outcome == DeliveryOutcome.UNREACHABLE
+    assert coordinator.ledger.device(gone_uuid).last_record.source == "probe"
     assert coordinator.data[running_uuid].decision == "probe"
 
     await coordinator.async_refresh()

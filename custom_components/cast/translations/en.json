@@ -55,21 +55,25 @@
     }
   },
   "issues": {
-    "tts_fetch_failed": {
-      "title": "{name} cannot fetch announcements from Home Assistant",
-      "description": "{name} ({entity_id}, {host}) accepted the last {count} announcements and then reported that it could not fetch the audio from {url_source}. Nothing was heard.\n\nNext action: from a device on the speaker's network, open Home Assistant's {url_source} in a browser. If it does not load, a firewall or VLAN rule between the speaker's subnet and Home Assistant is blocking it. If it loads, check that `internal_url` points at an address the speaker can reach, not a hostname it cannot resolve.\n\nLast error: {error}\n\nThis issue clears itself when a delivery to {name} succeeds."
-    },
-    "internal_url_automatic_multihomed": {
-      "title": "Internal URL is automatic on a host with several network adapters",
-      "description": "Home Assistant currently advertises {host} to cast devices, chosen automatically from these networks: {adapters}. If the adapter election changes, announcements move to another address without warning.\n\nNext action: in Settings, System, Network, set the Home Assistant URL (internal) explicitly to the address your cast devices can reach.\n\nThis issue clears itself once the internal URL is pinned or the host has one adapter."
+    "cast_device_unreachable": {
+      "title": "{name} has no Cast connection",
+      "description": "Home Assistant has failed {count} times in a row to reach {name} ({entity_id}) on {host} port 8009, so no announcement can be delivered to it. Discovery may still list the device.\n\nNext action: power-cycle the device. If it comes back and fails again, check that TCP port 8009 from Home Assistant to {host} is allowed; a firewall that permits mDNS but not the Cast channel produces exactly this.\n\nLast error: {error}\n\nThis issue clears itself when a delivery or probe to {name} succeeds."
     },
     "cast_group_spans_subnets": {
       "title": "Speaker group {name} spans subnets",
       "description": "The group leader is {leader_ip} and the members sit on {subnets}. Group playback and announcements to the group depend on multicast and unicast traffic between those subnets, and the leader can move to another subnet on election.\n\nNext action: if announcements to the group are unreliable, place all members on one subnet or allow the Cast ports (TCP 8008 to 8009 and the dynamic group port, UDP 32768 to 61000) between the subnets.\n\nThis issue clears itself when the members share a subnet."
     },
+    "internal_url_automatic_multihomed": {
+      "title": "Internal URL is automatic on a host with several network adapters",
+      "description": "Home Assistant currently advertises {host} to cast devices, chosen automatically from these networks: {adapters}. If the adapter election changes, announcements move to another address without warning.\n\nNext action: in Settings, System, Network, set the Home Assistant URL (internal) explicitly to the address your cast devices can reach.\n\nThis issue clears itself once the internal URL is pinned or the host has one adapter."
+    },
     "stale_cast_device": {
       "title": "{name} has not been seen for {days} days",
       "description": "The cast device {name} is registered in Home Assistant but discovery has not reported it since {last_seen}. Automations that target it will fail silently.\n\nNext action: if the device was replaced or removed, submit this repair to delete the registry entry. If it still exists, power-cycle it and check that mDNS reaches Home Assistant.\n\nThis issue clears itself when the device is discovered again."
+    },
+    "tts_fetch_failed": {
+      "title": "{name} cannot fetch announcements from Home Assistant",
+      "description": "{name} ({entity_id}, {host}) accepted the last {count} announcements and then reported that it could not fetch the audio from {url_source}. Nothing was heard.\n\nNext action: from a device on the speaker's network, open Home Assistant's {url_source} in a browser. If it does not load, a firewall or VLAN rule between the speaker's subnet and Home Assistant is blocking it. If it loads, check that `internal_url` points at an address the speaker can reach, not a hostname it cannot resolve.\n\nLast error: {error}\n\nThis issue clears itself when a delivery to {name} succeeds."
     },
     "tts_template_error": {
       "title": "An announcement template failed to render",

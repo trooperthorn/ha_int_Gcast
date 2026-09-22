@@ -735,8 +735,22 @@ class CastMediaPlayerEntity(CastDevice, MediaPlayerEntity):
                 },
             ) from err
         except HomeAssistantError as err:
-            self._ledger.async_request_failed(uuid, err)
+            self._ledger.async_request_failed(
+                uuid,
+                err,
+                connected=self.available,
+                launch_failure=self._last_launch_failure(),
+            )
             raise
+
+    def _last_launch_failure(self) -> str | None:
+        """Describe the receiver's last LAUNCH_ERROR, if any."""
+        if (chromecast := self._chromecast) is None:
+            return None
+        failure = chromecast.socket_client.receiver_controller.launch_failure
+        if failure is None:
+            return None
+        return f"reason={failure.reason} app_id={failure.app_id}"
 
     @api_error
     def _quick_play(self, app_name: str, data: dict[str, Any]) -> None:
