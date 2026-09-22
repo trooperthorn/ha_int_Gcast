@@ -65,6 +65,23 @@ FAKE_MDNS_SERVICE = pychromecast.discovery.MDNSServiceInfo("the-service")
 UNDEFINED = object()
 
 
+def _media_player_adds(add_entities: MagicMock) -> int:
+    """Count add_entities calls that carried media player entities.
+
+    The fork also adds health sensors through the same platform hook, so the
+    raw call count no longer equals the number of discovered players.
+    """
+    return sum(
+        1
+        for call in add_entities.mock_calls
+        if call.args
+        and any(
+            isinstance(entity, cast_media_player.CastMediaPlayerEntity)
+            for entity in list(call.args[0])
+        )
+    )
+
+
 def get_fake_chromecast(info: ChromecastInfo):
     """Generate a Fake Chromecast object with the specified arguments."""
     mock = MagicMock(uuid=info.uuid)
@@ -538,7 +555,7 @@ async def test_manual_cast_chromecasts_uuid(hass: HomeAssistant) -> None:
         )
     await hass.async_block_till_done()
     await hass.async_block_till_done()  # having tasks that add jobs
-    assert add_dev1.call_count == 0
+    assert _media_player_adds(add_dev1) == 0
 
     with patch(
         "custom_components.cast.discovery.ChromeCastZeroconf.get_zeroconf",
@@ -550,7 +567,7 @@ async def test_manual_cast_chromecasts_uuid(hass: HomeAssistant) -> None:
         )
     await hass.async_block_till_done()
     await hass.async_block_till_done()  # having tasks that add jobs
-    assert add_dev1.call_count == 1
+    assert _media_player_adds(add_dev1) == 1
 
 
 async def test_auto_cast_chromecasts(hass: HomeAssistant) -> None:
@@ -572,7 +589,7 @@ async def test_auto_cast_chromecasts(hass: HomeAssistant) -> None:
         )
     await hass.async_block_till_done()
     await hass.async_block_till_done()  # having tasks that add jobs
-    assert add_dev1.call_count == 1
+    assert _media_player_adds(add_dev1) == 1
 
     with patch(
         "custom_components.cast.discovery.ChromeCastZeroconf.get_zeroconf",
@@ -584,7 +601,7 @@ async def test_auto_cast_chromecasts(hass: HomeAssistant) -> None:
         )
     await hass.async_block_till_done()
     await hass.async_block_till_done()  # having tasks that add jobs
-    assert add_dev1.call_count == 2
+    assert _media_player_adds(add_dev1) == 2
 
 
 async def test_discover_dynamic_group(
@@ -642,7 +659,7 @@ async def test_discover_dynamic_group(
     tasks.clear()
     get_chromecast_mock.assert_called()
     get_chromecast_mock.reset_mock()
-    assert add_dev1.call_count == 0
+    assert _media_player_adds(add_dev1) == 0
     assert (
         entity_registry.async_get_entity_id("media_player", "cast", cast_1.uuid) is None
     )
@@ -671,7 +688,7 @@ async def test_discover_dynamic_group(
     tasks.clear()
     get_chromecast_mock.assert_called()
     get_chromecast_mock.reset_mock()
-    assert add_dev1.call_count == 0
+    assert _media_player_adds(add_dev1) == 0
     assert (
         entity_registry.async_get_entity_id("media_player", "cast", cast_2.uuid) is None
     )
@@ -697,7 +714,7 @@ async def test_discover_dynamic_group(
 
     assert len(tasks) == 0
     get_chromecast_mock.assert_not_called()
-    assert add_dev1.call_count == 0
+    assert _media_player_adds(add_dev1) == 0
     assert (
         entity_registry.async_get_entity_id("media_player", "cast", cast_1.uuid) is None
     )
@@ -739,7 +756,7 @@ async def test_update_cast_chromecasts(hass: HomeAssistant) -> None:
         )
     await hass.async_block_till_done()
     await hass.async_block_till_done()  # having tasks that add jobs
-    assert add_dev1.call_count == 1
+    assert _media_player_adds(add_dev1) == 1
 
     with patch(
         "custom_components.cast.discovery.ChromeCastZeroconf.get_zeroconf",
@@ -751,7 +768,7 @@ async def test_update_cast_chromecasts(hass: HomeAssistant) -> None:
         )
     await hass.async_block_till_done()
     await hass.async_block_till_done()  # having tasks that add jobs
-    assert add_dev1.call_count == 1
+    assert _media_player_adds(add_dev1) == 1
 
 
 async def test_entity_availability(hass: HomeAssistant) -> None:

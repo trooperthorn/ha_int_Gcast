@@ -7,7 +7,7 @@ from uuid import UUID
 from homeassistant.components.media_player import BrowseMedia, MediaType
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.const import Platform
-from homeassistant.core import HomeAssistant, callback
+from homeassistant.core import CALLBACK_TYPE, HomeAssistant, callback
 from homeassistant.exceptions import HomeAssistantError
 from homeassistant.helpers import device_registry as dr
 from homeassistant.helpers.integration_platform import LazyIntegrationPlatforms
@@ -17,8 +17,10 @@ from pychromecast.discovery import CastBrowser
 
 from . import home_assistant_cast
 from .const import DOMAIN
+from .discovery import stop_internal_discovery
+from .health import DeliveryLedger
 
-PLATFORMS = [Platform.MEDIA_PLAYER]
+PLATFORMS = [Platform.MEDIA_PLAYER, Platform.SENSOR]
 
 type CastConfigEntry = ConfigEntry[CastRuntimeData]
 
@@ -34,6 +36,15 @@ class CastRuntimeData:
     added_cast_devices: set[UUID] = field(default_factory=set)
     browser: CastBrowser | None = None
     multizone_manager: MultizoneManager | None = None
+    ledger: DeliveryLedger | None = None
+    added_health_devices: set[UUID] = field(default_factory=set)
+    unsub_discovery_stop: CALLBACK_TYPE | None = None
+
+    def get_ledger(self, hass: HomeAssistant, entry: CastConfigEntry) -> DeliveryLedger:
+        """Return the delivery ledger, creating it on first use."""
+        if self.ledger is None:
+            self.ledger = DeliveryLedger(hass, entry)
+        return self.ledger
 
 
 @callback
@@ -55,9 +66,20 @@ async def async_setup_entry(hass: HomeAssistant, entry: CastConfigEntry) -> bool
     entry.runtime_data = CastRuntimeData(
         cast_platforms=LazyIntegrationPlatforms(hass, DOMAIN, _process_cast_platform)
     )
+    entry.runtime_data.get_ledger(hass, entry)
     await home_assistant_cast.async_setup_ha_cast(hass, entry)
     await hass.config_entries.async_forward_entry_setups(entry, PLATFORMS)
     return True
+
+
+async def async_unload_entry(hass: HomeAssistant, entry: CastConfigEntry) -> bool:
+    """Unload a config entry."""
+    unload_ok = await hass.config_entries.async_unload_platforms(entry, PLATFORMS)
+    if unload_ok:
+        await hass.async_add_executor_job(stop_internal_discovery, hass, entry)
+        if entry.runtime_data.ledger is not None:
+            entry.runtime_data.ledger.async_shutdown()
+    return unload_ok
 
 
 class CastProtocol(Protocol):

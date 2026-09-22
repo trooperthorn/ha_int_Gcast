@@ -14,7 +14,7 @@
         "title": "Google Cast configuration"
       },
       "confirm": {
-        "description": "[%key:common::config_flow::description::confirm_setup%]"
+        "description": "Do you want to start setup?"
       }
     }
   },
@@ -49,10 +49,10 @@
     "step": {
       "init": {
         "data": {
-          "known_hosts": "[%key:component::cast::config::step::config::data::known_hosts%]"
+          "known_hosts": "Add known host"
         },
         "data_description": {
-          "known_hosts": "[%key:component::cast::config::step::config::data_description::known_hosts%]"
+          "known_hosts": "Hostnames or IP addresses of cast devices, use if mDNS discovery is not working"
         },
         "sections": {
           "more_options": {
@@ -67,7 +67,7 @@
             "name": "More options"
           }
         },
-        "title": "[%key:component::cast::config::step::config::title%]"
+        "title": "Google Cast configuration"
       }
     }
   },

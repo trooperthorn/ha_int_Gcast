@@ -1,6 +1,7 @@
 """Consts for Cast integration."""
 
 from typing import TYPE_CHECKING, NotRequired, TypedDict
+from uuid import UUID
 
 from homeassistant.util.signal_type import SignalType
 
@@ -38,3 +39,24 @@ class HomeAssistantControllerData(TypedDict):
     client_id: str | None
     refresh_token: str
     app_id: NotRequired[str]
+
+# Fork additions; see DESIGN.md.
+EVENT_DELIVERY_RESULT = "cast_delivery_result"
+SIGNAL_HEALTH_UPDATED: SignalType[UUID] = SignalType("cast_health_updated")
+SIGNAL_TOPOLOGY_UPDATED: SignalType[UUID] = SignalType("cast_topology_updated")
+
+CONF_PROBE_ENABLED = "probe_enabled"
+CONF_PROBE_INTERVAL = "probe_interval"
+CONF_GROUP_PROBE_ENABLED = "group_probe_enabled"
+DEFAULT_PROBE_ENABLED = True
+DEFAULT_GROUP_PROBE_ENABLED = True
+DEFAULT_PROBE_INTERVAL = 300
+MIN_PROBE_INTERVAL = 60
+
+DELIVERY_TIMEOUT = 30.0
+REQUEST_WATCHDOG = 45.0
+PROBE_WATCHDOG = 20.0
+CIRCUIT_BREAKER_TIMEOUTS = 2
+CIRCUIT_BREAKER_MAX_BACKOFF = 3600
+LEDGER_SIZE = 50
+STALE_DEVICE_DAYS = 7

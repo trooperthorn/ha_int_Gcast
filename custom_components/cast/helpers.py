@@ -21,8 +21,12 @@ import pychromecast.socket_client
 
 if TYPE_CHECKING:
     from homeassistant.components import zeroconf
+    from pychromecast.controllers.media import MediaStatus
+    from pychromecast.controllers.receiver import CastStatus
+    from pychromecast.socket_client import ConnectionStatus
 
     from . import CastConfigEntry
+    from .media_player import CastDevice
 
 
 _LOGGER = logging.getLogger(__name__)
@@ -161,7 +165,13 @@ class CastStatusListener(
     potentially arrive. This class allows invalidating past chromecast objects.
     """
 
-    def __init__(self, cast_device, chromecast, mz_mgr, mz_only=False):
+    def __init__(
+        self,
+        cast_device: CastDevice,
+        chromecast: pychromecast.Chromecast,
+        mz_mgr: pychromecast.controllers.multizone.MultizoneManager,
+        mz_only: bool = False,
+    ) -> None:
         """Initialize the status listener."""
         self._cast_device = cast_device
         self._uuid = chromecast.uuid
@@ -180,50 +190,52 @@ class CastStatusListener(
             self._mz_mgr.register_listener(chromecast.uuid, self)
 
     @override
-    def new_cast_status(self, status):
+    def new_cast_status(self, status: CastStatus) -> None:
         """Handle reception of a new CastStatus."""
         if self._valid:
             self._cast_device.new_cast_status(status)
 
     @override
-    def new_media_status(self, status):
+    def new_media_status(self, status: MediaStatus) -> None:
         """Handle reception of a new MediaStatus."""
         if self._valid:
             self._cast_device.new_media_status(status)
 
     @override
-    def load_media_failed(self, queue_item_id, error_code):
+    def load_media_failed(self, queue_item_id: int, error_code: int) -> None:
         """Handle reception of a new MediaStatus."""
         if self._valid:
             self._cast_device.load_media_failed(queue_item_id, error_code)
 
     @override
-    def new_connection_status(self, status):
+    def new_connection_status(self, status: ConnectionStatus) -> None:
         """Handle reception of a new ConnectionStatus."""
         if self._valid:
             self._cast_device.new_connection_status(status)
 
     @override
-    def added_to_multizone(self, group_uuid):
+    def added_to_multizone(self, group_uuid: str) -> None:
         """Handle the cast added to a group."""
 
     @override
-    def removed_from_multizone(self, group_uuid):
+    def removed_from_multizone(self, group_uuid: str) -> None:
         """Handle the cast removed from a group."""
         if self._valid:
             self._cast_device.multizone_new_media_status(group_uuid, None)
 
     @override
-    def multizone_new_cast_status(self, group_uuid, cast_status):
+    def multizone_new_cast_status(self, group_uuid: str, cast_status: CastStatus) -> None:
         """Handle reception of a new CastStatus for a group."""
 
     @override
-    def multizone_new_media_status(self, group_uuid, media_status):
+    def multizone_new_media_status(
+        self, group_uuid: str, media_status: MediaStatus
+    ) -> None:
         """Handle reception of a new MediaStatus for a group."""
         if self._valid:
             self._cast_device.multizone_new_media_status(group_uuid, media_status)
 
-    def invalidate(self):
+    def invalidate(self) -> None:
         """Invalidate this status listener.
 
         All following callbacks won't be forwarded.
@@ -247,18 +259,20 @@ class PlaylistSupported(PlaylistError):
 class PlaylistItem:
     """Playlist item."""
 
-    length: str | None
+    length: str | list[str] | None
     title: str | None
     url: str
 
 
-def _is_url(url):
+def _is_url(url: str) -> bool:
     """Validate the URL can be parsed and at least has scheme + netloc."""
     result = urlparse(url)
     return all([result.scheme, result.netloc])
 
 
-async def _fetch_playlist(hass, url, supported_content_types):
+async def _fetch_playlist(
+    hass: HomeAssistant, url: str, supported_content_types: tuple[str, ...]
+) -> str:
     """Fetch a playlist from the given url."""
     try:
         session = aiohttp_client.async_get_clientsession(hass, verify_ssl=False)
@@ -278,7 +292,7 @@ async def _fetch_playlist(hass, url, supported_content_types):
     return playlist_data
 
 
-async def parse_m3u(hass, url):
+async def parse_m3u(hass: HomeAssistant, url: str) -> list[PlaylistItem]:
     """Very simple m3u parser.
 
     Based on https://github.com/dvndrsn/M3uParser/blob/master/m3uparser.py
@@ -293,10 +307,10 @@ async def parse_m3u(hass, url):
     m3u_data = await _fetch_playlist(hass, url, hls_content_types)
     m3u_lines = m3u_data.splitlines()
 
-    playlist = []
+    playlist: list[PlaylistItem] = []
 
-    length = None
-    title = None
+    length: list[str] | None = None
+    title: str | None = None
 
     for line in m3u_lines:
         line = line.strip()
@@ -326,7 +340,7 @@ async def parse_m3u(hass, url):
     return playlist
 
 
-async def parse_pls(hass, url):
+async def parse_pls(hass: HomeAssistant, url: str) -> list[PlaylistItem]:
     """Very simple pls parser.
 
     Based on https://github.com/mariob/plsparser/blob/master/src/plsparser.py
@@ -352,7 +366,7 @@ async def parse_pls(hass, url):
 
     playlist_section = pls_parser[_PLS_SECTION_PLAYLIST]
 
-    playlist = []
+    playlist: list[PlaylistItem] = []
     for entry in range(1, num_entries + 1):
         file_option = f"File{entry}"
         if file_option not in playlist_section:
@@ -371,7 +385,7 @@ async def parse_pls(hass, url):
     return playlist
 
 
-async def parse_playlist(hass, url):
+async def parse_playlist(hass: HomeAssistant, url: str) -> list[PlaylistItem]:
     """Parse an m3u or pls playlist."""
     if url.endswith((".m3u", ".m3u8")):
         playlist = await parse_m3u(hass, url)
