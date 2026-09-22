@@ -6,7 +6,7 @@ from unittest.mock import ANY, patch
 from homeassistant import config_entries
 from homeassistant.components import cast
 from homeassistant.core import HomeAssistant
-from homeassistant.data_entry_flow import FlowResultType
+from homeassistant.data_entry_flow import FlowResultType, InvalidData
 import pytest
 from pytest_homeassistant_custom_component.common import (
     MockConfigEntry,
@@ -162,13 +162,13 @@ async def test_zeroconf_setup_onboarding(hass: HomeAssistant) -> None:
         (
             {},
             {},
-            {"more_options": {}},
+            {"more_options": {}, "health": {}},
             {"ignore_cec": [], "known_hosts": [], "user_id": ANY, "uuid": []},
         ),
         (
             {"ignore_cec": [], "known_hosts": [], "uuid": []},
             {"ignore_cec": [], "known_hosts": [], "uuid": []},
-            {"more_options": {}},
+            {"more_options": {}, "health": {}},
             {"ignore_cec": [], "known_hosts": [], "user_id": ANY, "uuid": []},
         ),
         (
@@ -188,6 +188,7 @@ async def test_zeroconf_setup_onboarding(hass: HomeAssistant) -> None:
                     "ignore_cec": ["other_cast", " ", "  some_cast "],
                     "uuid": ["foo", " ", "  bar "],
                 },
+                "health": {},
             },
             {
                 "ignore_cec": ["other_cast", "some_cast"],
@@ -208,7 +209,7 @@ async def test_zeroconf_setup_onboarding(hass: HomeAssistant) -> None:
                 "known_hosts": ["192.168.0.10", "192.168.0.11"],
                 "uuid": ["bla", "blu"],
             },
-            {"more_options": {}},
+            {"more_options": {}, "health": {}},
             {"ignore_cec": [], "known_hosts": [], "user_id": ANY, "uuid": []},
         ),
         # Explicit clearing of the lists
@@ -223,7 +224,7 @@ async def test_zeroconf_setup_onboarding(hass: HomeAssistant) -> None:
                 "known_hosts": ["192.168.0.10", "192.168.0.11"],
                 "uuid": ["bla", "blu"],
             },
-            {"known_hosts": [], "more_options": {"ignore_cec": [], "uuid": []}},
+            {"known_hosts": [], "more_options": {"ignore_cec": [], "uuid": []}, "health": {}},
             {"ignore_cec": [], "known_hosts": [], "user_id": ANY, "uuid": []},
         ),
     ],
@@ -249,7 +250,7 @@ async def test_option_flow(
     assert result["type"] is FlowResultType.FORM
     assert result["step_id"] == "init"
     data_schema = result["data_schema"].schema
-    assert set(data_schema) == {"known_hosts", "more_options"}
+    assert set(data_schema) == {"known_hosts", "more_options", "health"}
     more_options_schema = data_schema["more_options"].schema.schema
     assert set(more_options_schema) == {"ignore_cec", "uuid"}
 
@@ -266,7 +267,12 @@ async def test_option_flow(
         user_input=user_input,
     )
     assert result["type"] is FlowResultType.CREATE_ENTRY
-    assert result["data"] == {}
+    assert result["data"] == {
+        "probe_enabled": True,
+        "probe_interval": 300,
+        "group_probe_enabled": True,
+        "probe_video_devices": False,
+    }
     assert config_entry.data == updated
 
 
@@ -302,3 +308,52 @@ async def test_known_hosts(hass: HomeAssistant, castbrowser_mock) -> None:
     castbrowser_mock.return_value.host_browser.update_hosts.assert_called_once_with(
         ["192.168.0.11", "192.168.0.12"]
     )
+
+
+async def test_option_flow_health_section(hass: HomeAssistant) -> None:
+    """The delivery health options are stored on the entry and re-suggested."""
+    config_entry = MockConfigEntry(domain=DOMAIN, data={})
+    config_entry.add_to_hass(hass)
+    assert await hass.config_entries.async_setup(config_entry.entry_id)
+    await hass.async_block_till_done()
+
+    result = await hass.config_entries.options.async_init(config_entry.entry_id)
+    health_schema = result["data_schema"].schema["health"].schema.schema
+    assert set(health_schema) == {
+        "probe_enabled",
+        "probe_interval",
+        "group_probe_enabled",
+        "probe_video_devices",
+    }
+
+    result = await hass.config_entries.options.async_configure(
+        result["flow_id"],
+        {
+            "more_options": {},
+            "health": {
+                "probe_enabled": False,
+                "probe_interval": 120,
+                "group_probe_enabled": False,
+                "probe_video_devices": True,
+            },
+        },
+    )
+    assert result["type"] is FlowResultType.CREATE_ENTRY
+    assert config_entry.options == {
+        "probe_enabled": False,
+        "probe_interval": 120,
+        "group_probe_enabled": False,
+        "probe_video_devices": True,
+    }
+
+    result = await hass.config_entries.options.async_init(config_entry.entry_id)
+    health_schema = result["data_schema"].schema["health"].schema.schema
+    assert _get_schema_suggested_values(health_schema, ["probe_interval"]) == {
+        "probe_interval": 120
+    }
+
+    # The interval floor is enforced by the schema.
+    with pytest.raises(InvalidData):
+        await hass.config_entries.options.async_configure(
+            result["flow_id"], {"more_options": {}, "health": {"probe_interval": 10}}
+        )

@@ -139,7 +139,58 @@ WP2 stops the probe from repeating that.
   so an agent reading the log can reconstruct the state machine without the
   source.
 
-## 9. Decisions
+## 9. Active probing (WP2)
+
+A `DataUpdateCoordinator` runs every `probe_interval` seconds (default 300,
+floor 60, set in the integration options under "Delivery health"). The
+refresh itself never waits on a device: for each registered media player it
+takes a snapshot on the event loop, decides, and either records the decision
+or launches the probe as a background task. A wedged device therefore delays
+neither the refresh nor any other device's probe.
+
+The probe plays a quarter second of 8 kHz silence served by this Home
+Assistant instance at `/api/cast/probe/<token>.wav` through the default
+media receiver, using the same base URL selection as TTS playback
+(`get_url(hass)`) and, like the TTS proxy, no request signature. The outcome
+is judged by exactly the same ledger rules as a real announcement, so a
+probe `ok` means "this device fetched audio from this instance's URL just
+now". The token is random per Home Assistant start; the view is
+unauthenticated for the same reason the TTS proxy is (cast devices cannot
+present credentials).
+
+Decision order per device:
+
+| Condition | Decision | Recorded as |
+| --- | --- | --- |
+| Previous probe still running | skip | debug log only |
+| Entity unavailable or not connected | skip | debug log only |
+| Audio group and group probing off | skip | debug log only |
+| Video device (`cast_type == "cast"`) and video probing off (default) | skip; launching an app on a Chromecast with a display can wake the TV over CEC | debug log only |
+| Circuit open and backoff not elapsed | skip | debug log with remaining seconds |
+| Own `player_state` or any group's state in PLAYING, BUFFERING, PAUSED | `skipped_busy` | ledger record and event; the sensor keeps its last real outcome |
+| Otherwise | probe | ledger `source=probe` |
+
+Guards, all driven by pychromecast #1247:
+
+1. `quick_play` runs in the executor under `asyncio.timeout(PROBE_WATCHDOG)`
+   (20 s). The library's own 30 s wait is not relied on.
+2. The state transition wait is the ledger's 30 s timer, so "no response at
+   all" (`timeout`, `responded=false`) is distinct from "responded with a
+   failure" (`fetch_failed`, `responded=true`).
+3. Circuit breaker per device: after `CIRCUIT_BREAKER_TIMEOUTS` (2)
+   consecutive probe timeouts the device is skipped for
+   `interval * 2^(n-1)` seconds, capped at one hour, then probed once
+   (half-open). An `ok` closes the circuit and resets the counters; another
+   timeout doubles the backoff. Real playback requests are never blocked by
+   the breaker; only probes are.
+4. After a successful probe on a device whose app was idle beforehand, the
+   media receiver is quit so the device returns to the state it was in.
+   Failure to quit is logged at debug and does not change the outcome.
+
+Group probing is a separate option (`group_probe_enabled`) because of
+pychromecast #1197 (groups that buffer forever on play).
+
+## 10. Decisions
 
 | Date | Decision | Alternative rejected |
 | --- | --- | --- |

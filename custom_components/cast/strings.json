@@ -43,6 +43,9 @@
     },
     "request_watchdog": {
       "message": "{name} did not answer the play request within {seconds} seconds; the device may be hung (see the TTS outcome sensor)"
+    },
+    "probe_watchdog": {
+      "message": "{name} did not answer the probe within {seconds} seconds"
     }
   },
   "options": {
@@ -65,6 +68,21 @@
               "uuid": "A comma-separated list of UUIDs of Cast devices to add to Home Assistant. Use only if you don’t want to add all available cast devices."
             },
             "name": "More options"
+          },
+          "health": {
+            "name": "Delivery health",
+            "data": {
+              "probe_enabled": "Probe devices for reachability",
+              "probe_interval": "Probe interval",
+              "group_probe_enabled": "Probe speaker groups",
+              "probe_video_devices": "Probe video devices"
+            },
+            "data_description": {
+              "probe_enabled": "Every interval, each idle speaker plays a quarter second of silence served by this Home Assistant instance. The TTS outcome sensor shows the result, so a speaker that cannot reach Home Assistant is reported before an announcement is missed.",
+              "probe_interval": "Seconds between probe cycles; the floor is 60.",
+              "group_probe_enabled": "Speaker groups are probed through their leader. Turn off if a group buffers forever when probed (pychromecast issue 1197).",
+              "probe_video_devices": "Off by default: launching the media receiver on a Chromecast with a display can turn on the connected TV through CEC."
+            }
           }
         },
         "title": "[%key:component::cast::config::step::config::title%]"

@@ -17,7 +17,8 @@ from pychromecast.discovery import CastBrowser
 
 from . import home_assistant_cast
 from .const import DOMAIN
-from .discovery import stop_internal_discovery
+from .coordinator import CastProbeCoordinator
+from .discovery import config_entry_updated, stop_internal_discovery
 from .health import DeliveryLedger
 
 PLATFORMS = [Platform.MEDIA_PLAYER, Platform.SENSOR]
@@ -37,6 +38,7 @@ class CastRuntimeData:
     browser: CastBrowser | None = None
     multizone_manager: MultizoneManager | None = None
     ledger: DeliveryLedger | None = None
+    coordinator: CastProbeCoordinator | None = None
     added_health_devices: set[UUID] = field(default_factory=set)
     unsub_discovery_stop: CALLBACK_TYPE | None = None
 
@@ -66,7 +68,9 @@ async def async_setup_entry(hass: HomeAssistant, entry: CastConfigEntry) -> bool
     entry.runtime_data = CastRuntimeData(
         cast_platforms=LazyIntegrationPlatforms(hass, DOMAIN, _process_cast_platform)
     )
-    entry.runtime_data.get_ledger(hass, entry)
+    ledger = entry.runtime_data.get_ledger(hass, entry)
+    entry.runtime_data.coordinator = CastProbeCoordinator(hass, entry, ledger)
+    entry.async_on_unload(entry.add_update_listener(config_entry_updated))
     await home_assistant_cast.async_setup_ha_cast(hass, entry)
     await hass.config_entries.async_forward_entry_setups(entry, PLATFORMS)
     return True
@@ -77,6 +81,9 @@ async def async_unload_entry(hass: HomeAssistant, entry: CastConfigEntry) -> boo
     unload_ok = await hass.config_entries.async_unload_platforms(entry, PLATFORMS)
     if unload_ok:
         await hass.async_add_executor_job(stop_internal_discovery, hass, entry)
+        if entry.runtime_data.coordinator is not None:
+            entry.runtime_data.coordinator.async_shutdown_probes()
+            await entry.runtime_data.coordinator.async_shutdown()
         if entry.runtime_data.ledger is not None:
             entry.runtime_data.ledger.async_shutdown()
     return unload_ok

@@ -66,6 +66,19 @@ the developer documentation clone, and the GitHub API.
 | `14.0.10` published 2026-03-07, still latest; 72 commits since on `master`; library code touched only by `63064b6` (reconnect guard, #1242) and `8e29f99` (Bravia models); `eb2a9ff` adds `AI_POLICY.md` | GitHub API `compare/14.0.10...master`, `releases/latest` | 2026-09-22 |
 | The work order's "released 2025-03-07, roughly 18 months old" is off by a year; the conclusion (no release with the reconnect fix) stands | same | 2026-09-22 |
 
+## WP2
+
+| Fact | Source | Date |
+| --- | --- | --- |
+| TTS playback resolves to the relative path `/api/tts_proxy/<token>` (`ResultStream.url`), which `async_process_play_media_url` turns absolute with `get_url(hass)`; `/api/tts_proxy/` is in `PATHS_WITHOUT_AUTH`, so the URL is not signed | `components/tts/__init__.py` line 520, `components/media_player/browse_media.py` lines 34 to 85 | 2026-09-22 |
+| A relative path outside `PATHS_WITHOUT_AUTH` is signed (`authSig` query) and core notes some devices reject long URLs; the probe therefore builds its URL with `get_url(hass)` directly | same file, lines 59 to 70 | 2026-09-22 |
+| `Chromecast.is_idle` is true when there is no status, the app is `IDLE_APP_ID` (`E8C28D3C`) or none, or a Chromecast's active input is off | `pychromecast/__init__.py` lines 367 to 377 | 2026-09-22 |
+| `DataUpdateCoordinator` polls only while it has listeners; `update_interval` has a setter; `hass.async_create_background_task(..., eager_start=True)` exists | `helpers/update_coordinator.py` lines 242 to 250, `core.py` line 839 | 2026-09-22 |
+| `HomeAssistantView` supports `requires_auth = False`; `hass.http.register_view` registers once per instance | `helpers/http.py` line 126, `components/http/__init__.py` | 2026-09-22 |
+| The harness's `hass_client_no_auth` fixture exercises an unauthenticated view | `pytest_homeassistant_custom_component/plugins.py` | 2026-09-22 |
+| `MockConfigEntry(options=...)` plus `hass.config_entries.async_update_entry(entry, options=...)` triggers update listeners; an options flow's `async_create_entry(data=...)` replaces `entry.options` with `data`, so the flow must return the merged options or the values are lost | observed in `test_option_flow_health_section`; `config_entries.py` `async_update_entry` | 2026-09-22 |
+| A probe against a device blocked at the firewall cannot be exercised in the harness; the closest reproduction is the `ERROR` idle status the device sends in that case | work order section 4.1 and `test_probe_mdns_visible_but_unreachable` | 2026-09-22 |
+
 ## Corrections to the work order
 
 - Section 4.4: release date is 2026-03-07, not 2025-03-07.

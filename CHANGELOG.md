@@ -34,6 +34,23 @@ to `main` publishes the release; see `docs/operations.md`.
   `test_timeout_not_recorded_as_success`,
   `test_stale_metadata_not_treated_as_confirmation`, and the watchdog test.
 
+### WP2, active reachability probing
+
+- New `coordinator.py`: probes every idle audio device on a configurable
+  interval (default 300 s, floor 60 s) off the coordinator's critical path,
+  behind a 20 s watchdog, with a per-device circuit breaker (two consecutive
+  timeouts, exponential backoff capped at one hour) and a `skipped_busy`
+  outcome that never interrupts playback.
+- New `probe.py`: an unauthenticated view serving a quarter second of
+  silence under a per-start token, played through the same URL selection as
+  TTS.
+- Options section "Delivery health": `probe_enabled`, `probe_interval`,
+  `group_probe_enabled` (pychromecast #1197), `probe_video_devices` (off, CEC).
+- The entry update listener now lives in `async_setup_entry` and is removed
+  on unload, so reloads do not accumulate listeners.
+- 14 new tests, including `test_hung_device_does_not_block_others` and
+  `test_circuit_breaker_opens`.
+
 ### Divergence from upstream
 
 Inherited files edited by the fork, so an upstream reconciliation knows
@@ -50,5 +67,10 @@ where to look:
   the `_ledger` property, ledger calls in `new_media_status` and
   `load_media_failed`, `_async_quick_play_tracked` replacing the two direct
   `quick_play` executor calls.
-- `strings.json`: `entity` block and the `request_watchdog` exception.
+- `config_flow.py`: the "Delivery health" options section, stored in
+  `entry.options`.
+- `discovery.py`: the update listener registration moved to `__init__.py`;
+  `config_entry_updated` also applies probe options.
+- `strings.json`: `entity` block, `options` health section, and the
+  `request_watchdog` and `probe_watchdog` exceptions.
 - Import order follows this repository's ruff configuration.

@@ -7,16 +7,56 @@ from homeassistant.config_entries import ConfigFlow, ConfigFlowResult, OptionsFl
 from homeassistant.const import CONF_UUID
 from homeassistant.core import callback
 from homeassistant.data_entry_flow import SectionConfig, section
-from homeassistant.helpers.selector import SelectSelector, SelectSelectorConfig
+from homeassistant.helpers.selector import (
+    NumberSelector,
+    NumberSelectorConfig,
+    NumberSelectorMode,
+    SelectSelector,
+    SelectSelectorConfig,
+)
 from homeassistant.helpers.service_info.zeroconf import ZeroconfServiceInfo
 import voluptuous as vol
 
-from .const import CONF_IGNORE_CEC, CONF_KNOWN_HOSTS, DOMAIN
+from .const import (
+    CONF_GROUP_PROBE_ENABLED,
+    CONF_IGNORE_CEC,
+    CONF_KNOWN_HOSTS,
+    CONF_PROBE_ENABLED,
+    CONF_PROBE_INTERVAL,
+    CONF_PROBE_VIDEO_DEVICES,
+    DEFAULT_GROUP_PROBE_ENABLED,
+    DEFAULT_PROBE_ENABLED,
+    DEFAULT_PROBE_INTERVAL,
+    DEFAULT_PROBE_VIDEO_DEVICES,
+    DOMAIN,
+    MIN_PROBE_INTERVAL,
+)
 
 if TYPE_CHECKING:
     from . import CastConfigEntry
 
 CONF_MORE_OPTIONS = "more_options"
+CONF_HEALTH = "health"
+HEALTH_SCHEMA = vol.Schema(
+    {
+        vol.Optional(CONF_PROBE_ENABLED, default=DEFAULT_PROBE_ENABLED): bool,
+        vol.Optional(CONF_PROBE_INTERVAL, default=DEFAULT_PROBE_INTERVAL): vol.All(
+            NumberSelector(
+                NumberSelectorConfig(
+                    min=MIN_PROBE_INTERVAL,
+                    max=3600,
+                    step=1,
+                    mode=NumberSelectorMode.BOX,
+                    unit_of_measurement="s",
+                )
+            ),
+            vol.Coerce(int),
+            vol.Range(min=MIN_PROBE_INTERVAL, max=3600),
+        ),
+        vol.Optional(CONF_GROUP_PROBE_ENABLED, default=DEFAULT_GROUP_PROBE_ENABLED): bool,
+        vol.Optional(CONF_PROBE_VIDEO_DEVICES, default=DEFAULT_PROBE_VIDEO_DEVICES): bool,
+    }
+)
 KNOWN_HOSTS_SCHEMA = vol.Schema(
     {
         vol.Optional(
@@ -44,7 +84,10 @@ OPTIONS_SCHEMA = KNOWN_HOSTS_SCHEMA.extend(
                 }
             ),
             SectionConfig(collapsed=True),
-        )
+        ),
+        vol.Optional(CONF_HEALTH, default={}): section(
+            HEALTH_SCHEMA, SectionConfig(collapsed=True)
+        ),
     }
 )
 
@@ -129,12 +172,25 @@ class CastOptionsFlowHandler(OptionsFlow):
             updated_config[CONF_KNOWN_HOSTS] = known_hosts
             updated_config[CONF_UUID] = wanted_uuid
 
+            options = {**self.config_entry.options, **user_input.get(CONF_HEALTH, {})}
             self.hass.config_entries.async_update_entry(
-                self.config_entry, data=updated_config
+                self.config_entry, data=updated_config, options=options
             )
-            return self.async_create_entry(title="", data={})
+            return self.async_create_entry(title="", data=options)
 
-        suggested: dict[str, Any] = {CONF_MORE_OPTIONS: {}}
+        suggested: dict[str, Any] = {
+            CONF_MORE_OPTIONS: {},
+            CONF_HEALTH: {
+                key: self.config_entry.options[key]
+                for key in (
+                    CONF_PROBE_ENABLED,
+                    CONF_PROBE_INTERVAL,
+                    CONF_GROUP_PROBE_ENABLED,
+                    CONF_PROBE_VIDEO_DEVICES,
+                )
+                if key in self.config_entry.options
+            },
+        }
         if CONF_KNOWN_HOSTS in self.config_entry.data:
             suggested[CONF_KNOWN_HOSTS] = self.config_entry.data[CONF_KNOWN_HOSTS]
         for key in (CONF_UUID, CONF_IGNORE_CEC):

@@ -68,6 +68,7 @@ from .const import (
     SIGNAL_HASS_CAST_SHOW_VIEW,
     HomeAssistantControllerData,
 )
+from .coordinator import ProbeSnapshot
 from .discovery import setup_internal_discovery
 from .health import DeliveryLedger
 from .helpers import (
@@ -353,6 +354,7 @@ class CastMediaPlayerEntity(CastDevice, MediaPlayerEntity):
         self._hass_cast_controller: HomeAssistantController | None = None
 
         self._cast_view_remove_handler: CALLBACK_TYPE | None = None
+        self._probe_unregister: CALLBACK_TYPE | None = None
         self._attr_unique_id = str(cast_info.uuid)
         self._attr_device_info = DeviceInfo(
             identifiers={(DOMAIN, str(cast_info.uuid).replace("-", ""))},
@@ -382,6 +384,10 @@ class CastMediaPlayerEntity(CastDevice, MediaPlayerEntity):
         self._cast_view_remove_handler = async_dispatcher_connect(
             self.hass, SIGNAL_HASS_CAST_SHOW_VIEW, self._handle_signal_show_view
         )
+        if (coordinator := self._config_entry.runtime_data.coordinator) is not None:
+            self._probe_unregister = coordinator.async_register_target(
+                self._cast_info.uuid, self
+            )
 
     @override
     async def async_will_remove_from_hass(self) -> None:
@@ -391,6 +397,39 @@ class CastMediaPlayerEntity(CastDevice, MediaPlayerEntity):
         if self._cast_view_remove_handler:
             self._cast_view_remove_handler()
             self._cast_view_remove_handler = None
+        if self._probe_unregister:
+            self._probe_unregister()
+            self._probe_unregister = None
+
+    # ========== Probe target ==========
+    def probe_snapshot(self) -> ProbeSnapshot | None:
+        """Describe the device for the probe coordinator (loop thread)."""
+        if (chromecast := self._chromecast) is None or not self.available:
+            return None
+        media_status = self.media_status
+        return ProbeSnapshot(
+            cast_type=chromecast.cast_type,
+            is_audio_group=self._cast_info.is_audio_group,
+            app_id=chromecast.app_id,
+            app_idle=bool(chromecast.is_idle),
+            player_state=media_status.player_state if media_status else None,
+            group_player_states=tuple(
+                status.player_state if status else None
+                for status in self.mz_media_status.values()
+            ),
+            media_session_id=media_status.media_session_id if media_status else None,
+        )
+
+    def quick_play_probe(self, url: str, content_type: str) -> None:
+        """Play the probe clip through the default media receiver (executor)."""
+        self._quick_play(
+            "default_media_receiver",
+            {"media_id": url, "media_type": content_type, "stream_type": "BUFFERED"},
+        )
+
+    def quit_app_probe(self) -> None:
+        """Quit the app the probe launched (executor)."""
+        self._quit_app()
 
     @override
     async def _async_connect_to_chromecast(self) -> None:

@@ -123,8 +123,6 @@ def setup_internal_discovery(
         EVENT_HOMEASSISTANT_STOP, stop_discovery
     )
 
-    config_entry.add_update_listener(config_entry_updated)
-
 
 def stop_internal_discovery(hass: HomeAssistant, config_entry: CastConfigEntry) -> None:
     """Stop the internal discovery started for this entry, if it is running."""
@@ -146,3 +144,5 @@ async def config_entry_updated(
     """Handle config entry being updated."""
     if browser := config_entry.runtime_data.browser:
         browser.host_browser.update_hosts(config_entry.data.get(CONF_KNOWN_HOSTS))
+    if coordinator := config_entry.runtime_data.coordinator:
+        coordinator.async_apply_options()
