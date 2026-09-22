@@ -8,7 +8,7 @@ from uuid import UUID
 
 from homeassistant.const import EVENT_HOMEASSISTANT_STOP
 from homeassistant.core import Event, HomeAssistant
-from homeassistant.helpers.dispatcher import dispatcher_send
+from homeassistant.helpers.dispatcher import async_dispatcher_send, dispatcher_send
 import pychromecast.discovery
 import pychromecast.models
 
@@ -17,8 +17,10 @@ from .const import (
     INTERNAL_DISCOVERY_RUNNING_KEY,
     SIGNAL_CAST_DISCOVERED,
     SIGNAL_CAST_REMOVED,
+    SIGNAL_HEALTH_UPDATED,
 )
 from .helpers import ChromecastInfo, ChromeCastZeroconf
+from .urls import url_overrides
 
 if TYPE_CHECKING:
     from . import CastConfigEntry
@@ -158,3 +160,14 @@ async def config_entry_updated(
         browser.host_browser.update_hosts(config_entry.data.get(CONF_KNOWN_HOSTS))
     if coordinator := config_entry.runtime_data.coordinator:
         coordinator.async_apply_options()
+    if ledger := config_entry.runtime_data.ledger:
+        # Options such as the per-device URL override are shown as sensor
+        # attributes; refresh every device so they never go stale.
+        overrides = url_overrides(config_entry)
+        _LOGGER.debug(
+            "options applied: url overrides for %d device(s): %s",
+            len(overrides),
+            {str(uuid): base for uuid, base in overrides.items()},
+        )
+        for uuid in list(ledger.devices):
+            async_dispatcher_send(hass, SIGNAL_HEALTH_UPDATED, uuid)

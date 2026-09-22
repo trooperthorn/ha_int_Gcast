@@ -190,6 +190,26 @@ Guards, all driven by pychromecast #1247:
 Group probing is a separate option (`group_probe_enabled`) because of
 pychromecast #1197 (groups that buffer forever on play).
 
+### Per-device URL override
+
+Core has one `internal_url` and one `external_url`; the media player,
+the TTS proxy, and the probe all take their base from `get_url`. On a
+multi-homed host the automatic internal URL is one interface's address,
+and a speaker on a VLAN that cannot route to it fails every fetch while
+another VLAN's speakers succeed. `urls.py` adds `url_overrides`
+(`{"<uuid>": "scheme://host[:port]"}` in the entry options, edited in the
+options flow's `url_overrides` step) and `rewrite_hass_url`, which
+replaces scheme, host, and port of a URL that points at this instance and
+leaves any other URL alone. The rewrite happens in one place for
+playback, `async_play_media` after `async_process_play_media_url`, so it
+covers `tts.speak` (which calls `play_media` with a media source id that
+the entity resolves), `cast.announce`, and direct `play_media` calls; the
+coordinator applies the same rewrite to the probe URL per device. The
+ledger reports such deliveries with `url_source=override`, the outcome
+sensor shows the base in `url_override`, and diagnostics list every
+override. Signed media source URLs stay valid: the signature covers path
+and query, not the host.
+
 ## 10. Topology and subnet awareness (WP3)
 
 A speaker group's `_googlecast._tcp` record is advertised from the leader's
@@ -286,3 +306,4 @@ and the last decision per device; active issue ids and stale candidates.
 | 2026-09-22 | `ok` requires a changed media session id | Content id match alone: defeated by #1018 and TTS cache hits |
 | 2026-09-22 | The health sensors hang off the discovery signal, one pair per device, and never for dynamic groups | Creating them from the media player entity: couples two platforms |
 | 2026-09-22 | A superseded request resolves as `unknown` | `timeout`: would count as a failure and open the circuit breaker for a device that was merely asked twice |
+| 2026-09-22 | Per-device URL override rewrites in `async_play_media`, one device per options step, matched by uuid | Per-subnet rules: a group's leader moves between subnets; rewriting inside the TTS integration: outside the fork's domain |

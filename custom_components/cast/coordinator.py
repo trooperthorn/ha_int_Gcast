@@ -43,6 +43,7 @@ from .const import (
 )
 from .health import DeliveryLedger, DeliveryOutcome, DeliveryRecord, DeviceHealth
 from .probe import PROBE_CONTENT_TYPE, async_setup_probe_view
+from .urls import rewrite_hass_url, url_overrides
 
 if TYPE_CHECKING:
     from . import CastConfigEntry
@@ -50,7 +51,11 @@ if TYPE_CHECKING:
 _LOGGER = logging.getLogger(__name__)
 
 BUSY_STATES = frozenset(
-    {MEDIA_PLAYER_STATE_PLAYING, MEDIA_PLAYER_STATE_BUFFERING, MEDIA_PLAYER_STATE_PAUSED}
+    {
+        MEDIA_PLAYER_STATE_PLAYING,
+        MEDIA_PLAYER_STATE_BUFFERING,
+        MEDIA_PLAYER_STATE_PAUSED,
+    }
 )
 
 
@@ -200,6 +205,7 @@ class CastProbeCoordinator(DataUpdateCoordinator[dict[UUID, ProbeResult]]):
             raise UpdateFailed(
                 "no internal or external URL is configured; probing needs one"
             ) from err
+        overrides = url_overrides(self.config_entry)
         now = dt_util.utcnow()
         for uuid, target in list(self.targets.items()):
             health = self.ledger.device(uuid)
@@ -207,14 +213,21 @@ class CastProbeCoordinator(DataUpdateCoordinator[dict[UUID, ProbeResult]]):
             results[uuid] = ProbeResult(checked_at=now, decision=decision)
             if decision != "probe":
                 _LOGGER.debug(
-                    "[%s %s uuid=%s] probe %s", health.entity_id, health.name, uuid, decision
+                    "[%s %s uuid=%s] probe %s",
+                    health.entity_id,
+                    health.name,
+                    uuid,
+                    decision,
                 )
                 continue
             snapshot = target.probe_snapshot()
             assert snapshot is not None
             self._running.add(uuid)
+            device_url = url
+            if (base := overrides.get(uuid)) is not None:
+                device_url = rewrite_hass_url(self.hass, url, base)
             self.hass.async_create_background_task(
-                self._async_probe(uuid, target, snapshot, url),
+                self._async_probe(uuid, target, snapshot, device_url),
                 f"cast-probe-{uuid}",
                 eager_start=True,
             )
@@ -296,7 +309,9 @@ class CastProbeCoordinator(DataUpdateCoordinator[dict[UUID, ProbeResult]]):
         finally:
             self._running.discard(uuid)
             if self.data is not None and uuid in self.data:
-                self.data[uuid].outcome = health.last_record.outcome if health.last_record else None
+                self.data[uuid].outcome = (
+                    health.last_record.outcome if health.last_record else None
+                )
             self.async_update_listeners()
 
     async def _async_wait_for_outcome(self, uuid: UUID) -> DeliveryOutcome | None:
@@ -341,7 +356,9 @@ class CastProbeCoordinator(DataUpdateCoordinator[dict[UUID, ProbeResult]]):
             and health.consecutive_timeouts >= CIRCUIT_BREAKER_TIMEOUTS
         ):
             exponent = health.consecutive_timeouts - CIRCUIT_BREAKER_TIMEOUTS + 1
-            backoff = min(self.options.interval * 2**exponent, CIRCUIT_BREAKER_MAX_BACKOFF)
+            backoff = min(
+                self.options.interval * 2**exponent, CIRCUIT_BREAKER_MAX_BACKOFF
+            )
             health.circuit_open_until = time.monotonic() + backoff
             _LOGGER.warning(
                 "[%s %s uuid=%s] circuit open: %d consecutive probe timeouts "

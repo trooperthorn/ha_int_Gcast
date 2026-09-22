@@ -107,18 +107,36 @@
               "probe_enabled": "Probe devices for reachability",
               "probe_interval": "Probe interval",
               "group_probe_enabled": "Probe speaker groups",
-              "probe_video_devices": "Probe video devices"
+              "probe_video_devices": "Probe video devices",
+              "edit_url_overrides": "Edit per-device URL overrides next"
             },
             "data_description": {
               "probe_enabled": "Every interval, each idle speaker plays a quarter second of silence served by this Home Assistant instance. The TTS outcome sensor shows the result, so a speaker that cannot reach Home Assistant is reported before an announcement is missed.",
               "probe_interval": "Seconds between probe cycles; the floor is 60.",
               "group_probe_enabled": "Speaker groups are probed through their leader. Turn off if a group buffers forever when probed (pychromecast issue 1197).",
-              "probe_video_devices": "Off by default: launching the media receiver on a Chromecast with a display can turn on the connected TV through CEC."
+              "probe_video_devices": "Off by default: launching the media receiver on a Chromecast with a display can turn on the connected TV through CEC.",
+              "edit_url_overrides": "Home Assistant has a single internal URL. Turn this on to give one speaker its own base URL for announcements and probes, for example when it sits on a VLAN that reaches Home Assistant on a different address."
             }
           }
         },
         "title": "[%key:component::cast::config::step::config::title%]"
+      },
+      "url_overrides": {
+        "title": "Per-device URL override",
+        "description": "Pick a device and enter the base URL it should fetch announcements and probes from, such as http://192.168.30.3:8123. Leave the URL empty to remove the device's override. Only URLs that point at this Home Assistant instance are rewritten; radio streams and other third-party URLs are never touched.\\n\\nCurrent overrides: {overrides}",
+        "data": {
+          "device": "Device",
+          "url": "Base URL",
+          "add_another": "Edit another device after saving"
+        },
+        "data_description": {
+          "device": "Devices the integration currently knows. A device uuid can be pasted for one that is not listed.",
+          "url": "Scheme, host, and port only, no path."
+        }
       }
+    },
+    "error": {
+      "invalid_url": "Enter a base URL such as http://192.168.30.3:8123 (scheme and host, optional port, no path)."
     }
   },
   "services": {

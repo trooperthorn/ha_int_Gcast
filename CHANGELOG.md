@@ -3,6 +3,17 @@
 Versions are calendar versions `YYYY.MM.DD.N`; tags carry no prefix. A merge
 to `main` publishes the release; see `docs/operations.md`.
 
+## 2026.09.22.4
+
+- Per-device URL override (`url_overrides` in the entry options, edited
+  through the options flow: tick "Edit per-device URL overrides next"
+  under Delivery health). Home Assistant URLs sent to that device from
+  `tts.speak`, `cast.announce`, `play_media`, and the probe are re-based
+  onto the override; `url_source` reads `override`, the outcome sensor
+  carries `url_override`, diagnostics list every override. Third-party
+  URLs are untouched; invalid overrides are logged and ignored.
+- Sensors refresh their attributes whenever the entry options change.
+
 ## 2026.09.22.3
 
 First live log review (El Rancho Assist, 2026-09-22 11:45 to 12:00):
@@ -138,7 +149,8 @@ where to look:
   `load_media_failed`, `_async_quick_play_tracked` replacing the two direct
   `quick_play` executor calls.
 - `config_flow.py`: the "Delivery health" options section, stored in
-  `entry.options`.
+  `entry.options`, and the `url_overrides` step.
+- `media_player.py`: `_apply_url_override` after `async_process_play_media_url`.
 - `discovery.py`: the update listener registration moved to `__init__.py`;
   `config_entry_updated` also applies probe options.
 - `strings.json`: `entity` block, `options` health section, and the
