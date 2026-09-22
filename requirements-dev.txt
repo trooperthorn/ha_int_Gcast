@@ -3,10 +3,10 @@ ruff==0.16.8
 
 # Type checking
 mypy==2.3.1
-homeassistant-stubs==2026.9.2
+homeassistant-stubs==2026.9.3
 
-# Home Assistant core and the test harness (the harness pins core 2026.9.2)
-pytest-homeassistant-custom-component==0.13.365
+# Home Assistant core and the test harness (the harness pins core 2026.9.3)
+pytest-homeassistant-custom-component==0.13.366
 pytest-cov==7.1.0
 
 # Integration dependency, pinned exactly as core's manifest pins it

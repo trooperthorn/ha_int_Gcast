@@ -128,17 +128,25 @@ def setup_internal_discovery(
     )
 
 
-def stop_internal_discovery(hass: HomeAssistant, config_entry: CastConfigEntry) -> None:
-    """Stop the internal discovery started for this entry, if it is running."""
+async def async_stop_internal_discovery(
+    hass: HomeAssistant, config_entry: CastConfigEntry
+) -> None:
+    """Stop the internal discovery started for this entry, if it is running.
+
+    The stop listener is detached and the browser reference cleared on the
+    event loop before the blocking stop runs, so a Home Assistant stop event
+    racing an unload cannot release the lock twice.
+    """
     runtime_data = config_entry.runtime_data
-    if runtime_data.browser is None:
+    if (browser := runtime_data.browser) is None:
         return
-    if (unsub := runtime_data.unsub_discovery_stop) is not None:
-        unsub()
-        runtime_data.unsub_discovery_stop = None
-    _LOGGER.debug("Stopping internal pychromecast discovery (entry unload)")
-    runtime_data.browser.stop_discovery()
     runtime_data.browser = None
+    _LOGGER.debug("Stopping internal pychromecast discovery (entry unload)")
+    if (unsub := runtime_data.unsub_discovery_stop) is not None:
+        runtime_data.unsub_discovery_stop = None
+        # listen_once was called from the executor, so its remover is thread-only.
+        await hass.async_add_executor_job(unsub)
+    await hass.async_add_executor_job(browser.stop_discovery)
     hass.data[INTERNAL_DISCOVERY_RUNNING_KEY].release()
 
 

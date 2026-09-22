@@ -25,7 +25,7 @@ jobs:
       - name: Install the test harness
         run: pip install -r requirements-dev.txt
       - name: Verify runtime versions
-        run: python -c "from importlib.metadata import version; import sys; print(version('homeassistant')); assert version('homeassistant') == '2026.9.2'; assert sys.version_info[:2] == (3, 14)"
+        run: python -c "from importlib.metadata import version; import sys; print(version('homeassistant')); assert version('homeassistant') == '2026.9.3'; assert sys.version_info[:2] == (3, 14)"
       - name: Lint
         run: ruff check .
       - name: Type check

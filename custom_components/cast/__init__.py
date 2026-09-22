@@ -19,7 +19,7 @@ from pychromecast.discovery import CastBrowser
 from . import home_assistant_cast
 from .const import DOMAIN
 from .coordinator import CastProbeCoordinator
-from .discovery import config_entry_updated, stop_internal_discovery
+from .discovery import async_stop_internal_discovery, config_entry_updated
 from .health import DeliveryLedger
 from .issues import RepairManager
 from .services import async_setup_services
@@ -96,7 +96,7 @@ async def async_unload_entry(hass: HomeAssistant, entry: CastConfigEntry) -> boo
     """Unload a config entry."""
     unload_ok = await hass.config_entries.async_unload_platforms(entry, PLATFORMS)
     if unload_ok:
-        await hass.async_add_executor_job(stop_internal_discovery, hass, entry)
+        await async_stop_internal_discovery(hass, entry)
         if entry.runtime_data.coordinator is not None:
             entry.runtime_data.coordinator.async_shutdown_probes()
             await entry.runtime_data.coordinator.async_shutdown()

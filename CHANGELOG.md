@@ -3,7 +3,15 @@
 Versions are calendar versions `YYYY.MM.DD.N`; tags carry no prefix. A merge
 to `main` publishes the release; see `docs/operations.md`.
 
-## Unreleased
+## 2026.09.22.2
+
+- Harness and stubs moved to core 2026.9.3 (Dependabot bumps merged).
+- Entry unload removes the discovery stop listener from the executor and
+  clears the browser before the blocking stop, fixing a race with the
+  Home Assistant stop event (`release unlocked lock`).
+- Dependabot: codeql-action 4.38.1, hassfest action refreshed, ruff 0.16.8.
+
+## 2026.09.22.1
 
 ### WP0, fork hygiene and provenance
 

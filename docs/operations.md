@@ -89,8 +89,8 @@ WSL:
 wsl -e bash -lc 'cd /mnt/c/Users/sean.LAB/repos/ha_int_Gcast && ~/gcastvenv/bin/ruff check . && ~/gcastvenv/bin/mypy --config-file mypy.ini custom_components/cast && ~/gcastvenv/bin/python -m pytest tests -q --cov'
 ```
 
-`requirements-dev.txt` pins the harness (`pytest-homeassistant-custom-component==0.13.365`,
-which brings core 2026.9.2), `PyChromecast==14.0.10`, ruff, mypy with
+`requirements-dev.txt` pins the harness (`pytest-homeassistant-custom-component==0.13.366`,
+which brings core 2026.9.3), `PyChromecast==14.0.10`, ruff, mypy with
 `homeassistant-stubs`, and the two packages core's `tts` imports at module
 load (`mutagen`, `ha-ffmpeg`) because the ported cast tests set `tts` up.
 
