@@ -121,8 +121,11 @@ gh attestation verify cast.zip -R trooperthorn/ha_int_Gcast
 
 ## Repository visibility
 
-HACS requires a public repository, and both the HACS validation action and
-CodeQL are skipped while the repository is private (they cannot read a
-private repository's contents or run code scanning without Advanced
-Security). Making the repository public turns both checks on with no other
-change.
+HACS requires a public repository. While the repository is private, the
+HACS validation action and CodeQL are skipped (they cannot read a private
+repository's contents or run code scanning without Advanced Security), the
+two attestation steps of the release are skipped (GitHub does not persist
+attestations for user-owned private repositories), auto-merge cannot be
+enabled, and secret scanning is unavailable. Making the repository public
+turns all of these on with no other change; the release verification
+commands then include `gh attestation verify`.

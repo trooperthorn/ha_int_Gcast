@@ -97,14 +97,15 @@ jobs:
         working-directory: dist
         run: sha256sum cast.zip cast.spdx.json > SHA256SUMS
 
+      # Attestations are unavailable for user-owned private repositories.
       - name: Attest build provenance
-        if: steps.version.outputs.publish == 'true'
+        if: steps.version.outputs.publish == 'true' && !github.event.repository.private
         uses: actions/attest@1e69f48acb82d1966a394da916b4c1698aa569d6 # v4
         with:
           subject-path: dist/cast.zip
 
       - name: Attest the archive SBOM
-        if: steps.version.outputs.publish == 'true'
+        if: steps.version.outputs.publish == 'true' && !github.event.repository.private
         uses: actions/attest@1e69f48acb82d1966a394da916b4c1698aa569d6 # v4
         with:
           subject-path: dist/cast.zip
