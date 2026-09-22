@@ -75,8 +75,13 @@ class CastHealthSensor(SensorEntity):
         self._uuid: UUID = info.uuid
         self._attr_translation_key = key
         self._attr_unique_id = f"{info.uuid}_{key}"
+        # Identical to the media player's device record so the device carries
+        # the cast name whichever platform registers it first.
         self._attr_device_info = DeviceInfo(
             identifiers={(DOMAIN, str(info.uuid).replace("-", ""))},
+            manufacturer=str(info.cast_info.manufacturer),
+            model=info.cast_info.model_name,
+            name=str(info.friendly_name),
         )
 
     @property

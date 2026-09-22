@@ -331,3 +331,23 @@ async def test_unload_entry_stops_discovery(hass: HomeAssistant, castbrowser_moc
     assert not hass.data[INTERNAL_DISCOVERY_RUNNING_KEY].locked()
     assert hass.states.get(OUTCOME).state == STATE_UNAVAILABLE
     assert hass.states.get(ENTITY_ID).state == STATE_UNAVAILABLE
+
+
+async def test_health_sensor_device_record_matches_media_player(hass: HomeAssistant) -> None:
+    """The sensors carry the cast name so the device is named correctly either way.
+
+    On a slow runner the sensor platform can register the device before the
+    media player does; without the name the device would be called after the
+    config entry title and the entity ids would follow it.
+    """
+    from custom_components.cast.sensor import CastOutcomeSensor
+    from tests.test_media_player import get_fake_chromecast_info
+
+    entry = hass.config_entries.async_entries("cast")
+    assert not entry
+    info = get_fake_chromecast_info()
+    sensor = CastOutcomeSensor(MagicMock(), info)
+    assert sensor.device_info["name"] == "Speaker"
+    assert sensor.device_info["manufacturer"] == "Nabu Casa"
+    assert sensor.device_info["model"] == "Chromecast"
+    assert sensor.unique_id == f"{info.uuid}_tts_outcome"
