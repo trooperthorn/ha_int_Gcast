@@ -27,6 +27,7 @@ from custom_components.cast.issues import (
     ISSUE_GROUP_SPANS,
     ISSUE_MULTIHOMED,
     ISSUE_STALE_DEVICE,
+    ISSUE_UNREACHABLE,
     RepairManager,
 )
 from tests.test_health import OUTCOME, _play, _setup, _status
@@ -211,3 +212,25 @@ async def test_fix_flow_unknown_issue() -> None:
 
     with pytest.raises(ValueError):
         await async_create_fix_flow(MagicMock(), "tts_fetch_failed.x", None)
+
+
+async def test_unreachable_issue_raises_and_autoresolves(hass: HomeAssistant, quick_play_mock) -> None:
+    """Two consecutive unreachable outcomes raise the issue; a success clears it."""
+    from pychromecast.error import NotConnected
+
+    _, media_status_cb = await _setup(hass)
+    issue_id = f"{ISSUE_UNREACHABLE}.{FakeUUID}"
+    quick_play_mock.side_effect = NotConnected()
+    for _ in range(2):
+        with pytest.raises(Exception):  # noqa: B017
+            await _play(hass)
+    issue = _issue(hass, issue_id)
+    assert issue is not None
+    assert issue.translation_placeholders["count"] == "2"
+    assert issue.translation_placeholders["host"] == "192.168.178.42"
+
+    quick_play_mock.side_effect = None
+    await _play(hass)
+    media_status_cb(_status(player_state="BUFFERING", media_session_id=11))
+    await hass.async_block_till_done()
+    assert _issue(hass, issue_id) is None

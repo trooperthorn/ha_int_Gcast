@@ -225,7 +225,15 @@ class CastProbeCoordinator(DataUpdateCoordinator[dict[UUID, ProbeResult]]):
             return "skipped: previous probe still running"
         snapshot = target.probe_snapshot()
         if snapshot is None:
-            return "skipped: not connected"
+            # A device with no Cast channel is the silent failure the fork
+            # exists for; record it instead of skipping quietly.
+            self.ledger.async_record(
+                uuid,
+                DeliveryOutcome.UNREACHABLE,
+                source="probe",
+                error="no Cast channel to the device on port 8009 (entity unavailable)",
+            )
+            return "unreachable: not connected"
         if snapshot.is_audio_group and not self.options.groups:
             return "skipped: group probing disabled"
         if (

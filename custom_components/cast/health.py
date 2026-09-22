@@ -399,8 +399,21 @@ class DeliveryLedger:
         self._resolve(health, DeliveryOutcome.FETCH_FAILED, error=message, responded=True)
 
     @callback
-    def async_request_failed(self, uuid: UUID, err: BaseException) -> None:
-        """Classify an exception raised while sending the play request."""
+    def async_request_failed(
+        self,
+        uuid: UUID,
+        err: BaseException,
+        *,
+        connected: bool | None = None,
+        launch_failure: str | None = None,
+    ) -> None:
+        """Classify an exception raised while sending the play request.
+
+        pychromecast raises RequestFailed both when the message could not be
+        sent and when the device answered the app launch with LAUNCH_ERROR,
+        so the entity's connection state and the receiver's last launch
+        failure decide between unreachable and fetch_failed.
+        """
         health = self.device(uuid)
         cause = err.__cause__ if not isinstance(err, PyChromecastError) else err
         if isinstance(err, TimeoutError):
@@ -411,6 +424,15 @@ class DeliveryLedger:
             outcome = DeliveryOutcome.TIMEOUT
             responded = False
             text = f"{type(cause).__name__}: {cause}"
+        elif isinstance(cause, RequestFailed) and (connected or launch_failure):
+            outcome = DeliveryOutcome.FETCH_FAILED
+            responded = True
+            text = (
+                f"device rejected the app launch: {launch_failure}"
+                if launch_failure
+                else "RequestFailed while connected: the device answered the request "
+                "with a failure (no launch error reason was reported)"
+            )
         elif isinstance(cause, (NotConnected, ChromecastConnectionError, RequestFailed)):
             outcome = DeliveryOutcome.UNREACHABLE
             responded = False

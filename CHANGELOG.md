@@ -3,6 +3,22 @@
 Versions are calendar versions `YYYY.MM.DD.N`; tags carry no prefix. A merge
 to `main` publishes the release; see `docs/operations.md`.
 
+## 2026.09.22.3
+
+First live log review (El Rancho Assist, 2026-09-22 11:45 to 12:00):
+
+- A device with no Cast channel at all (the Master Google mini, which
+  pychromecast could not connect to on 8009 for the whole window) stayed at
+  `unknown` because the probe skipped unavailable devices silently. The
+  probe now records `unreachable` for them, and a new self-resolving repair
+  issue `cast_device_unreachable` is raised after two consecutive
+  `unreachable` outcomes, naming the host and the 8009 check.
+- `RequestFailed` from pychromecast covers both "message not sent" and
+  "device answered LAUNCH_ERROR". The Media Closet speaker was answering
+  within half a second and being reported `unreachable`. When the entity is
+  connected the outcome is now `fetch_failed` with the receiver's last
+  launch failure (`reason=... app_id=...`) in the error text.
+
 ## 2026.09.22.2
 
 - Harness and stubs moved to core 2026.9.3 (Dependabot bumps merged).

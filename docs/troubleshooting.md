@@ -60,7 +60,10 @@ The issue clears itself as soon as a delivery to that device succeeds.
 
 1. Is the media player entity available? If not, discovery still sees the
    device (or the entity would not exist) but the socket to port 8009 could
-   not be opened. Power-cycle the speaker.
+   not be opened. Every probe cycle records `unreachable` for it and, after
+   two in a row, the repair issue **"<device> has no Cast connection"**
+   appears. Power-cycle the speaker; if it fails again, check that TCP 8009
+   from Home Assistant to the device is allowed.
 2. If the entity is available and the outcome still reads `unreachable`,
    the channel dropped between the last status and the request. The next
    probe (within the interval) re-evaluates; if it stays `unreachable`, the

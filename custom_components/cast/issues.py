@@ -36,6 +36,7 @@ ISSUE_MULTIHOMED = "internal_url_automatic_multihomed"
 ISSUE_GROUP_SPANS = "cast_group_spans_subnets"
 ISSUE_STALE_DEVICE = "stale_cast_device"
 ISSUE_TEMPLATE_ERROR = "tts_template_error"
+ISSUE_UNREACHABLE = "cast_device_unreachable"
 FETCH_FAILURES_BEFORE_ISSUE = 2
 
 
@@ -60,6 +61,7 @@ class RepairManager:
     last_seen: dict[str, datetime] = field(default_factory=dict)
     tracked_since: dict[str, datetime] = field(default_factory=dict)
     consecutive_fetch_failures: dict[UUID, int] = field(default_factory=dict)
+    consecutive_unreachable: dict[UUID, int] = field(default_factory=dict)
     stale: dict[str, StaleCandidate] = field(default_factory=dict)
     _unsub: CALLBACK_TYPE | None = None
 
@@ -142,9 +144,27 @@ class RepairManager:
                         "error": record.error or "",
                     },
                 )
+        elif record.outcome is DeliveryOutcome.UNREACHABLE:
+            count = self.consecutive_unreachable.get(uuid, 0) + 1
+            self.consecutive_unreachable[uuid] = count
+            if count >= FETCH_FAILURES_BEFORE_ISSUE:
+                self._create(
+                    f"{ISSUE_UNREACHABLE}.{uuid}",
+                    ir.IssueSeverity.ERROR,
+                    ISSUE_UNREACHABLE,
+                    {
+                        "name": health.name or str(uuid),
+                        "entity_id": health.entity_id or "",
+                        "host": health.host or "unknown",
+                        "count": str(count),
+                        "error": record.error or "",
+                    },
+                )
         elif record.outcome is DeliveryOutcome.OK:
             self.consecutive_fetch_failures[uuid] = 0
+            self.consecutive_unreachable[uuid] = 0
             self._delete(f"{ISSUE_FETCH_FAILED}.{uuid}")
+            self._delete(f"{ISSUE_UNREACHABLE}.{uuid}")
 
     @callback
     def async_template_error(
@@ -312,5 +332,8 @@ class RepairManager:
             ],
             "consecutive_fetch_failures": {
                 str(uuid): count for uuid, count in self.consecutive_fetch_failures.items()
+            },
+            "consecutive_unreachable": {
+                str(uuid): count for uuid, count in self.consecutive_unreachable.items()
             },
         }

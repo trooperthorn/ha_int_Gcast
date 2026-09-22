@@ -47,8 +47,8 @@ and carried by every `cast_delivery_result` event.
 | Value | Meaning | Evidence that produces it |
 | --- | --- | --- |
 | `ok` | The device acknowledged the request and entered BUFFERING or PLAYING for the content id we asked for, in a new media session | A `MediaStatus` callback with matching `content_id`, `player_state` in (BUFFERING, PLAYING), and `media_session_id` different from the one recorded when the request was sent |
-| `fetch_failed` | Cast accepted the command; the device could not retrieve or decode the media. The 2026-09-21 case | `player_is_idle` with `idle_reason == "ERROR"` for the requested content id (or with no content id), a `LOAD_FAILED` message, or a non-transport `PyChromecastError` |
-| `unreachable` | No Cast channel to the device on port 8009 | `NotConnected`, `ChromecastConnectionError`, or `RequestFailed` (message could not be sent) |
+| `fetch_failed` | Cast accepted the command; the device could not retrieve or decode the media, or rejected the app launch. The 2026-09-21 case | `player_is_idle` with `idle_reason == "ERROR"` for the requested content id (or with no content id), a `LOAD_FAILED` message, `RequestFailed` while connected (pychromecast raises it for a `LAUNCH_ERROR` answer too; the receiver's last `LaunchFailure` reason goes into the error text), or a non-transport `PyChromecastError` |
+| `unreachable` | No Cast channel to the device on port 8009 | `NotConnected`, `ChromecastConnectionError`, `RequestFailed` while the entity is unavailable, or a probe cycle finding the entity unavailable |
 | `timeout` | Nothing happened inside the window. The outcome is genuinely unknown and must not be reported as success | No qualifying status within `DELIVERY_TIMEOUT` (30 s) after the request, a `RequestTimeout` from the library, or the `REQUEST_WATCHDOG` (45 s) cutting a `quick_play` that never returned |
 | `template_error` | A message or data template failed to render, so no TTS was ever requested | The `cast.announce` action (WP4) catching `TemplateError` |
 | `skipped_busy` | A probe was due but the device was not idle, so it was not interrupted | WP2 coordinator |
