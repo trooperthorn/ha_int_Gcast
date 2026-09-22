@@ -32,12 +32,9 @@ from .const import (
     CONF_PROBE_ENABLED,
     CONF_PROBE_INTERVAL,
     CONF_PROBE_VIDEO_DEVICES,
-    DEFAULT_GROUP_PROBE_ENABLED,
-    DEFAULT_PROBE_ENABLED,
-    DEFAULT_PROBE_INTERVAL,
-    DEFAULT_PROBE_VIDEO_DEVICES,
     DELIVERY_TIMEOUT,
     DOMAIN,
+    HEALTH_DEFAULTS,
     MIN_PROBE_INTERVAL,
     PROBE_WATCHDOG,
 )
@@ -113,13 +110,12 @@ class ProbeOptions:
 
 def probe_options(entry: CastConfigEntry) -> ProbeOptions:
     """Read the probe options with their floors applied."""
-    options = entry.options
-    interval = int(options.get(CONF_PROBE_INTERVAL, DEFAULT_PROBE_INTERVAL))
+    options = {**HEALTH_DEFAULTS, **entry.options}
     return ProbeOptions(
-        enabled=bool(options.get(CONF_PROBE_ENABLED, DEFAULT_PROBE_ENABLED)),
-        interval=max(interval, MIN_PROBE_INTERVAL),
-        groups=bool(options.get(CONF_GROUP_PROBE_ENABLED, DEFAULT_GROUP_PROBE_ENABLED)),
-        video=bool(options.get(CONF_PROBE_VIDEO_DEVICES, DEFAULT_PROBE_VIDEO_DEVICES)),
+        enabled=bool(options[CONF_PROBE_ENABLED]),
+        interval=max(int(options[CONF_PROBE_INTERVAL]), MIN_PROBE_INTERVAL),
+        groups=bool(options[CONF_GROUP_PROBE_ENABLED]),
+        video=bool(options[CONF_PROBE_VIDEO_DEVICES]),
     )
 
 

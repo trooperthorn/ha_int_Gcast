@@ -173,3 +173,23 @@ and the error. Import it from the repository or copy the file into
   directory would show as `fetch_failed` on announcements while probes
   stay `ok`; that combination points at the TTS integration, not the
   network.
+
+## The Delivery health checkboxes disagree with what is running
+
+Trust `sensor.<device>_tts_outcome`, not the form. Its attributes name the
+`source` (`probe` or `play_media`) and the `content_id`; a `content_id` under
+`/api/cast/probe/` and a `checked_at` on a fixed cadence mean the prober is
+running whatever the options screen shows.
+
+Before this was fixed, the options flow built the Delivery health section's
+suggested values only from keys already present in the config entry's options,
+while `probe_options()` fell back to the defaults for anything missing. An
+entry whose options had never been saved therefore drew every checkbox
+unchecked while probing ran every 300 seconds. The symptom was a Google Home
+or Nest Mini clicking on a five minute cadence with no automation to blame:
+the payload is silent, but the device wakes and emits its own connect sound
+each time a receiver launches.
+
+Both readers now take their defaults from `HEALTH_DEFAULTS` in `const.py`, so
+the form shows what is in effect. On an entry saved before the fix, pressing
+Submit on that screen once writes the options and removes any ambiguity.

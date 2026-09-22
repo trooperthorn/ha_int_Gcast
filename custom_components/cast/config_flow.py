@@ -35,6 +35,7 @@ from .const import (
     DEFAULT_PROBE_INTERVAL,
     DEFAULT_PROBE_VIDEO_DEVICES,
     DOMAIN,
+    HEALTH_DEFAULTS,
     MIN_PROBE_INTERVAL,
 )
 from .urls import normalize_override
@@ -198,15 +199,12 @@ class CastOptionsFlowHandler(OptionsFlow):
 
         suggested: dict[str, Any] = {
             CONF_MORE_OPTIONS: {},
+            # Every key, defaulted: a section suggested value replaces the
+            # schema defaults, so a key left out here draws as unset (a
+            # checkbox unchecked) whatever the runtime actually does.
             CONF_HEALTH: {
-                key: self.config_entry.options[key]
-                for key in (
-                    CONF_PROBE_ENABLED,
-                    CONF_PROBE_INTERVAL,
-                    CONF_GROUP_PROBE_ENABLED,
-                    CONF_PROBE_VIDEO_DEVICES,
-                )
-                if key in self.config_entry.options
+                key: self.config_entry.options.get(key, default)
+                for key, default in HEALTH_DEFAULTS.items()
             },
         }
         if CONF_KNOWN_HOSTS in self.config_entry.data:
