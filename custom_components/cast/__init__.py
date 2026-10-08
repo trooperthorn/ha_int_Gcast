@@ -4,7 +4,8 @@ from dataclasses import dataclass, field
 from typing import Protocol
 from uuid import UUID
 
-from homeassistant.components.media_player import BrowseMedia, MediaType
+from homeassistant.components.media_player.browse_media import BrowseMedia
+from homeassistant.components.media_player.const import MediaType
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.const import Platform
 from homeassistant.core import CALLBACK_TYPE, HomeAssistant, callback

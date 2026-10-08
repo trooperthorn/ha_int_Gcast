@@ -20,7 +20,7 @@ from pychromecast.models import CastInfo
 import pychromecast.socket_client
 
 if TYPE_CHECKING:
-    from homeassistant.components import zeroconf
+    from homeassistant.components.zeroconf.models import HaZeroconf
     from pychromecast.controllers.media import MediaStatus
     from pychromecast.controllers.receiver import CastStatus
     from pychromecast.socket_client import ConnectionStatus
@@ -139,15 +139,15 @@ class ChromecastInfo:
 class ChromeCastZeroconf:
     """Class to hold a zeroconf instance."""
 
-    __zconf: ClassVar[zeroconf.HaZeroconf | None] = None
+    __zconf: ClassVar[HaZeroconf | None] = None
 
     @classmethod
-    def set_zeroconf(cls, zconf: zeroconf.HaZeroconf) -> None:
+    def set_zeroconf(cls, zconf: HaZeroconf) -> None:
         """Set zeroconf."""
         cls.__zconf = zconf
 
     @classmethod
-    def get_zeroconf(cls) -> zeroconf.HaZeroconf | None:
+    def get_zeroconf(cls) -> HaZeroconf | None:
         """Get zeroconf."""
         return cls.__zconf
 

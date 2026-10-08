@@ -150,7 +150,7 @@ class CastProbeCoordinator(DataUpdateCoordinator[dict[UUID, ProbeResult]]):
     def async_apply_options(self) -> None:
         """Re-read the options after the entry was updated."""
         self.options = probe_options(self.config_entry)
-        self.update_interval = timedelta(seconds=self.options.interval)  # type: ignore[misc]
+        self.update_interval = timedelta(seconds=self.options.interval)
         _LOGGER.debug(
             "probe options applied enabled=%s interval=%ss groups=%s video=%s",
             self.options.enabled,
