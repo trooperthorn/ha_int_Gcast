@@ -27,7 +27,7 @@
     "PyChromecast>=14.0.10"
   ],
   "single_config_entry": true,
-  "version": "2026.09.22.5",
+  "version": "2026.10.08.1",
   "zeroconf": [
     "_googlecast._tcp.local."
   ]
