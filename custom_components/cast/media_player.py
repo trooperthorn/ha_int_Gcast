@@ -11,18 +11,20 @@ from typing import TYPE_CHECKING, Any, Concatenate, cast, override
 from uuid import UUID
 
 from homeassistant.components import media_source, tts, zeroconf
-from homeassistant.components.media_player import (
-    ATTR_MEDIA_EXTRA,
-    BrowseError,
+from homeassistant.components.media_player import MediaPlayerEntity
+from homeassistant.components.media_player.browse_media import (
     BrowseMedia,
+    async_process_play_media_url,
+)
+from homeassistant.components.media_player.const import (
+    ATTR_MEDIA_EXTRA,
     MediaClass,
     MediaPlayerDeviceClass,
-    MediaPlayerEntity,
     MediaPlayerEntityFeature,
     MediaPlayerState,
     MediaType,
-    async_process_play_media_url,
 )
+from homeassistant.components.media_player.errors import BrowseError
 from homeassistant.const import (
     CAST_APP_ID_HOMEASSISTANT_LOVELACE,
     CONF_UUID,
@@ -897,7 +899,7 @@ class CastMediaPlayerEntity(CastDevice, MediaPlayerEntity):
             result = await media_source.async_browse_media(
                 self.hass, None, content_filter=content_filter
             )
-            children.extend(result.children)
+            children.extend(result.children or [])
         except BrowseError:
             if not children:
                 raise

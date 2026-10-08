@@ -9,8 +9,8 @@ from typing import Final
 import wave
 
 from aiohttp import web
-from homeassistant.components.http import HomeAssistantView
 from homeassistant.core import HomeAssistant, callback
+from homeassistant.helpers.http import HomeAssistantView
 from homeassistant.util.hass_dict import HassKey
 
 PROBE_PATH: Final = "/api/cast/probe"
