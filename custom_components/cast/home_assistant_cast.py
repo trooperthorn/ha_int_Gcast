@@ -8,7 +8,7 @@ from homeassistant.exceptions import HomeAssistantError
 from homeassistant.helpers import config_validation as cv, dispatcher, instance_id
 from homeassistant.helpers.network import NoURLAvailableError, get_url
 from homeassistant.helpers.service import async_register_admin_service
-import voluptuous as vol
+import probatio
 
 from .const import DOMAIN, SIGNAL_HASS_CAST_SHOW_VIEW, HomeAssistantControllerData
 
@@ -79,11 +79,11 @@ async def async_setup_ha_cast(hass: core.HomeAssistant, entry: CastConfigEntry) 
         DOMAIN,
         SERVICE_SHOW_VIEW,
         handle_show_view,
-        vol.Schema(
+        probatio.Schema(
             {
                 ATTR_ENTITY_ID: cv.entity_id,
                 ATTR_VIEW_PATH: str,
-                vol.Optional(ATTR_URL_PATH): str,
+                probatio.Optional(ATTR_URL_PATH): str,
             }
         ),
     )

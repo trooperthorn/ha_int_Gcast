@@ -20,7 +20,7 @@ from homeassistant.helpers.selector import (
     TextSelectorType,
 )
 from homeassistant.helpers.service_info.zeroconf import ZeroconfServiceInfo
-import voluptuous as vol
+import probatio
 
 from .const import (
     CONF_GROUP_PROBE_ENABLED,
@@ -47,10 +47,10 @@ CONF_MORE_OPTIONS = "more_options"
 CONF_HEALTH = "health"
 CONF_EDIT_URL_OVERRIDES = "edit_url_overrides"
 CONF_ADD_ANOTHER = "add_another"
-HEALTH_SCHEMA = vol.Schema(
+HEALTH_SCHEMA = probatio.Schema(
     {
-        vol.Optional(CONF_PROBE_ENABLED, default=DEFAULT_PROBE_ENABLED): bool,
-        vol.Optional(CONF_PROBE_INTERVAL, default=DEFAULT_PROBE_INTERVAL): vol.All(
+        probatio.Optional(CONF_PROBE_ENABLED, default=DEFAULT_PROBE_ENABLED): bool,
+        probatio.Optional(CONF_PROBE_INTERVAL, default=DEFAULT_PROBE_INTERVAL): probatio.All(
             NumberSelector(
                 NumberSelectorConfig(
                     min=MIN_PROBE_INTERVAL,
@@ -60,21 +60,21 @@ HEALTH_SCHEMA = vol.Schema(
                     unit_of_measurement="s",
                 )
             ),
-            vol.Coerce(int),
-            vol.Range(min=MIN_PROBE_INTERVAL, max=3600),
+            probatio.Coerce(int),
+            probatio.Range(min=MIN_PROBE_INTERVAL, max=3600),
         ),
-        vol.Optional(
+        probatio.Optional(
             CONF_GROUP_PROBE_ENABLED, default=DEFAULT_GROUP_PROBE_ENABLED
         ): bool,
-        vol.Optional(
+        probatio.Optional(
             CONF_PROBE_VIDEO_DEVICES, default=DEFAULT_PROBE_VIDEO_DEVICES
         ): bool,
-        vol.Optional(CONF_EDIT_URL_OVERRIDES, default=False): bool,
+        probatio.Optional(CONF_EDIT_URL_OVERRIDES, default=False): bool,
     }
 )
-KNOWN_HOSTS_SCHEMA = vol.Schema(
+KNOWN_HOSTS_SCHEMA = probatio.Schema(
     {
-        vol.Optional(
+        probatio.Optional(
             CONF_KNOWN_HOSTS,
         ): SelectSelector(
             SelectSelectorConfig(custom_value=True, options=[], multiple=True),
@@ -83,15 +83,15 @@ KNOWN_HOSTS_SCHEMA = vol.Schema(
 )
 OPTIONS_SCHEMA = KNOWN_HOSTS_SCHEMA.extend(
     {
-        vol.Required(CONF_MORE_OPTIONS): section(
-            vol.Schema(
+        probatio.Required(CONF_MORE_OPTIONS): section(
+            probatio.Schema(
                 {
-                    vol.Optional(CONF_UUID): SelectSelector(
+                    probatio.Optional(CONF_UUID): SelectSelector(
                         SelectSelectorConfig(
                             custom_value=True, options=[], multiple=True
                         ),
                     ),
-                    vol.Optional(CONF_IGNORE_CEC): SelectSelector(
+                    probatio.Optional(CONF_IGNORE_CEC): SelectSelector(
                         SelectSelectorConfig(
                             custom_value=True, options=[], multiple=True
                         ),
@@ -100,7 +100,7 @@ OPTIONS_SCHEMA = KNOWN_HOSTS_SCHEMA.extend(
             ),
             SectionConfig(collapsed=True),
         ),
-        vol.Optional(CONF_HEALTH, default={}): section(
+        probatio.Optional(CONF_HEALTH, default={}): section(
             HEALTH_SCHEMA, SectionConfig(collapsed=True)
         ),
     }
@@ -247,19 +247,19 @@ class CastOptionsFlowHandler(OptionsFlow):
                 if not user_input.get(CONF_ADD_ANOTHER):
                     return self._async_finish()
 
-        schema = vol.Schema(
+        schema = probatio.Schema(
             {
-                vol.Required(CONF_DEVICE): SelectSelector(
+                probatio.Required(CONF_DEVICE): SelectSelector(
                     SelectSelectorConfig(
                         options=self._device_options(overrides),
                         mode=SelectSelectorMode.DROPDOWN,
                         custom_value=True,
                     )
                 ),
-                vol.Optional(CONF_URL): TextSelector(
+                probatio.Optional(CONF_URL): TextSelector(
                     TextSelectorConfig(type=TextSelectorType.URL)
                 ),
-                vol.Optional(CONF_ADD_ANOTHER, default=False): bool,
+                probatio.Optional(CONF_ADD_ANOTHER, default=False): bool,
             }
         )
         current = (
