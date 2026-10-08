@@ -2,11 +2,11 @@
 
 from __future__ import annotations
 
-from homeassistant.components.media_player import DOMAIN as MEDIA_PLAYER_DOMAIN
+from homeassistant.components.media_player.const import DOMAIN as MEDIA_PLAYER_DOMAIN
 from homeassistant.core import HomeAssistant, callback
 from homeassistant.helpers import config_validation as cv, service
 from homeassistant.helpers.typing import VolDictType
-import voluptuous as vol
+import probatio
 
 from .const import DOMAIN
 
@@ -18,11 +18,11 @@ ATTR_CACHE = "cache"
 ATTR_OPTIONS = "options"
 
 ANNOUNCE_SCHEMA: VolDictType = {
-    vol.Required(ATTR_MESSAGE): cv.string,
-    vol.Optional(ATTR_ENGINE): cv.string,
-    vol.Optional(ATTR_LANGUAGE): cv.string,
-    vol.Optional(ATTR_CACHE): cv.boolean,
-    vol.Optional(ATTR_OPTIONS): dict,
+    probatio.Required(ATTR_MESSAGE): cv.string,
+    probatio.Optional(ATTR_ENGINE): cv.string,
+    probatio.Optional(ATTR_LANGUAGE): cv.string,
+    probatio.Optional(ATTR_CACHE): cv.boolean,
+    probatio.Optional(ATTR_OPTIONS): dict,
 }
 
 
