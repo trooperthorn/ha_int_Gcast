@@ -2,7 +2,7 @@
 ruff==0.17.2
 
 # Type checking
-mypy==2.4.0
+mypy==2.4.1
 homeassistant-stubs==2026.10.0
 
 # Home Assistant core and the test harness (the harness pins core 2026.10.0)
